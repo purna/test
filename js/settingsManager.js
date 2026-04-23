@@ -28,12 +28,145 @@ class SettingsManager {
     setupInitialState() {
         this.loadPanelConfig();
         this.setupEventListeners();
+        this.setupLabelEventListeners();
         // Update auto-save button state to match current setting
         this.updateAutoSaveButton();
         // Start auto-save if enabled
         if (this.autoSaveEnabled) {
             this.startAutoSave();
         }
+    }
+
+    // Setup event listeners for static elements
+    setupEventListeners() {
+        // Settings button in header - open settings modal
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => this.openSettings());
+        }
+
+        // Settings modal close buttons
+        const settingsClose = document.getElementById('settings-modal-close');
+        if (settingsClose) {
+            settingsClose.addEventListener('click', () => this.closeSettings());
+        }
+        const settingsCancel = document.getElementById('settings-cancel-btn');
+        if (settingsCancel) {
+            settingsCancel.addEventListener('click', () => this.closeSettings());
+        }
+        // Settings modal overlay
+        const settingsModal = document.getElementById('settings-modal');
+        if (settingsModal) {
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target.id === 'settings-modal') {
+                    this.closeSettings();
+                }
+            });
+        }
+
+        // Settings tabs
+        document.querySelectorAll('.settings-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const tabName = e.target.dataset.tab;
+                this.switchTab(tabName);
+            });
+        });
+
+        // Boards tab actions - Create board
+        document.getElementById('create-board-btn')?.addEventListener('click', () => {
+            const input = document.getElementById('new-board-name');
+            const boardName = input.value.trim();
+            if (boardName && this.boardManager) {
+                this.boardManager.saveBoard(boardName);
+                this.boardManager.currentBoardName = boardName;
+                this.renderBoardsList();
+                this.showNotification(`Board "${boardName}" created and loaded`, 'success');
+                input.value = '';
+            }
+        });
+
+        // Boards tab - Save board
+        document.getElementById('save-board-btn')?.addEventListener('click', () => {
+            if (this.boardManager) {
+                const boardName = this.boardManager.currentBoardName || 'default';
+                this.boardManager.saveBoard(boardName);
+                this.showSaveComplete();
+            }
+        });
+
+        // Auto-save toggle
+        document.getElementById('auto-save-btn')?.addEventListener('click', () => this.toggleAutoSave());
+
+        // Export JSON
+        document.getElementById('export-json-btn')?.addEventListener('click', () => {
+            if (this.boardManager) this.boardManager.exportBoardJSON();
+        });
+
+        // Import JSON button
+        document.getElementById('import-json-btn')?.addEventListener('click', () => {
+            document.getElementById('import-json-input')?.click();
+        });
+
+        // Import JSON file input
+        document.getElementById('import-json-input')?.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0] && this.boardManager) {
+                this.boardManager.importBoardJSON(e.target.files[0]);
+                e.target.value = '';
+            }
+        });
+
+        // Panels tab
+        document.getElementById('panel-count')?.addEventListener('change', () => {
+            this.panelConfig.count = parseInt(document.getElementById('panel-count').value);
+            this.renderPanelConfig();
+        });
+
+        document.getElementById('save-panels-config')?.addEventListener('click', () => {
+            const inputs = document.querySelectorAll('#panel-names-config input');
+            inputs.forEach((input, index) => {
+                this.panelConfig.names[index] = input.value.trim() || `Column ${index + 1}`;
+            });
+            const dateFormatSelect = document.getElementById('date-format');
+            if (dateFormatSelect) {
+                this.dateFormat = dateFormatSelect.value;
+            }
+            this.savePanelConfig();
+            this.showNotification('Panel configuration saved', 'success');
+        });
+
+        // Role modal events
+        const roleModalClose = document.getElementById('role-modal-close');
+        if (roleModalClose) {
+            roleModalClose.addEventListener('click', () => this.closeRoleModal());
+        }
+        const roleCancelBtn = document.getElementById('role-cancel-btn');
+        if (roleCancelBtn) {
+            roleCancelBtn.addEventListener('click', () => this.closeRoleModal());
+        }
+        const roleSaveBtn = document.getElementById('role-save-btn');
+        if (roleSaveBtn) {
+            roleSaveBtn.addEventListener('click', () => this.saveRole());
+        }
+        const roleModal = document.getElementById('role-modal');
+        if (roleModal) {
+            roleModal.addEventListener('click', (e) => {
+                if (e.target.id === 'role-modal') this.closeRoleModal();
+            });
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const roleModal = document.getElementById('role-modal');
+                if (roleModal && roleModal.classList.contains('active')) {
+                    this.closeRoleModal();
+                }
+                const settingsModal = document.getElementById('settings-modal');
+                if (settingsModal && settingsModal.classList.contains('active')) {
+                    this.closeSettings();
+                }
+            }
+        });
     }
 
     // Update auto-save button UI to match current state
@@ -572,142 +705,204 @@ class SettingsManager {
     }
 
     // Event Listeners
-    setupEventListeners() {
-        // Settings button in header - open settings modal
-        const settingsBtn = document.getElementById('settings-btn');
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => this.openSettings());
+    // ========== LABELS MANAGEMENT ==========
+
+    // GitHub default labels
+    static get DEFAULT_LABELS() {
+        return [
+            { name: 'bug',              color: '#d73a4a', description: "Something isn't working" },
+            { name: 'documentation',    color: '#0075ca', description: 'Improvements or additions to documentation' },
+            { name: 'duplicate',        color: '#cfd3d7', description: 'This issue or pull request already exists' },
+            { name: 'enhancement',      color: '#a2eeef', description: 'New feature or request' },
+            { name: 'good first issue', color: '#7057ff', description: 'Good for newcomers' },
+            { name: 'help wanted',      color: '#008672', description: 'Extra attention is needed' },
+            { name: 'invalid',          color: '#e4e669', description: "This doesn't seem right" },
+            { name: 'question',         color: '#d876e3', description: 'Further information is requested' },
+            { name: 'wontfix',          color: '#ffffff', description: 'This will not be worked on' },
+        ];
+    }
+
+    loadLabels() {
+        try {
+            const stored = localStorage.getItem('kanban-labels');
+            if (stored) return JSON.parse(stored);
+        } catch (e) { /* ignore */ }
+        // Return a deep copy of defaults
+        return SettingsManager.DEFAULT_LABELS.map(l => ({ ...l }));
+    }
+
+    saveLabels(labels) {
+        localStorage.setItem('kanban-labels', JSON.stringify(labels));
+    }
+
+    renderLabelsList() {
+        const container = document.getElementById('labels-list');
+        if (!container) return;
+
+        const labels = this.loadLabels();
+        container.innerHTML = '';
+
+        if (labels.length === 0) {
+            container.innerHTML = '<p class="empty-message">No labels defined yet.</p>';
+            return;
         }
 
-        // Settings modal close buttons
-        const settingsClose = document.getElementById('settings-modal-close');
-        if (settingsClose) {
-            settingsClose.addEventListener('click', () => this.closeSettings());
-        }
-        const settingsCancel = document.getElementById('settings-cancel-btn');
-        if (settingsCancel) {
-            settingsCancel.addEventListener('click', () => this.closeSettings());
-        }
-        // Settings modal overlay
-        const settingsModal = document.getElementById('settings-modal');
-        if (settingsModal) {
-            settingsModal.addEventListener('click', (e) => {
-                if (e.target.id === 'settings-modal') {
-                    this.closeSettings();
-                }
+        labels.forEach((label, index) => {
+            const item = document.createElement('div');
+            item.className = 'label-item';
+            item.dataset.index = index;
+
+            // Determine readable text colour
+            const textColor = this.getLabelTextColor(label.color);
+
+            item.innerHTML = `
+                <div class="label-badge" style="background:${label.color};color:${textColor};">
+                    ${this.escapeHtml(label.name)}
+                </div>
+                <div class="label-desc">${this.escapeHtml(label.description || '')}</div>
+                <div class="label-item-actions">
+                    <button class="btn btn-sm edit-label-btn" data-index="${index}" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="btn btn-sm delete-label-btn" data-index="${index}" title="Delete"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+
+            container.appendChild(item);
+        });
+
+        container.querySelectorAll('.edit-label-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.index);
+                this.openLabelForm(idx);
             });
-        }
+        });
 
-        // Settings tabs
-        document.querySelectorAll('.settings-tab').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                const tabName = e.target.dataset.tab;
-                this.switchTab(tabName);
+        container.querySelectorAll('.delete-label-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.index);
+                const labels = this.loadLabels();
+                labels.splice(idx, 1);
+                this.saveLabels(labels);
+                this.renderLabelsList();
+                this.showNotification('Label deleted', 'info');
             });
         });
+    }
 
-        // Boards tab actions - Create board
-        document.getElementById('create-board-btn')?.addEventListener('click', () => {
-            const input = document.getElementById('new-board-name');
-            const boardName = input.value.trim();
-            if (boardName && this.boardManager) {
-                this.boardManager.saveBoard(boardName);
-                this.boardManager.currentBoardName = boardName;
-                this.renderBoardsList();
-                this.showNotification(`Board "${boardName}" created and loaded`, 'success');
-                input.value = '';
+    // Determine whether to use dark or light text on a background colour
+    getLabelTextColor(hex) {
+        const c = hex.replace('#', '');
+        const r = parseInt(c.substring(0,2),16);
+        const g = parseInt(c.substring(2,4),16);
+        const b = parseInt(c.substring(4,6),16);
+        // Relative luminance
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminance > 0.55 ? '#24292f' : '#ffffff';
+    }
+
+    openLabelForm(editIndex = null) {
+        const form = document.getElementById('label-form');
+        const nameInput = document.getElementById('label-name-input');
+        const colorInput = document.getElementById('label-color-input');
+        const descInput = document.getElementById('label-desc-input');
+        const preview = document.getElementById('label-color-preview');
+        if (!form) return;
+
+        form.style.display = 'block';
+        form.dataset.editIndex = editIndex !== null ? editIndex : '';
+
+        if (editIndex !== null) {
+            const labels = this.loadLabels();
+            const label = labels[editIndex];
+            nameInput.value = label.name;
+            colorInput.value = label.color;
+            descInput.value = label.description || '';
+            preview.style.background = label.color;
+        } else {
+            nameInput.value = '';
+            colorInput.value = '#0075ca';
+            descInput.value = '';
+            preview.style.background = '#0075ca';
+        }
+
+        nameInput.focus();
+    }
+
+    closeLabelForm() {
+        const form = document.getElementById('label-form');
+        if (form) form.style.display = 'none';
+    }
+
+    saveLabelForm() {
+        const form = document.getElementById('label-form');
+        const nameInput = document.getElementById('label-name-input');
+        const colorInput = document.getElementById('label-color-input');
+        const descInput = document.getElementById('label-desc-input');
+        if (!form || !nameInput) return;
+
+        const name = nameInput.value.trim();
+        if (!name) {
+            this.showNotification('Label name is required', 'error');
+            nameInput.focus();
+            return;
+        }
+
+        const labels = this.loadLabels();
+        const editIndex = form.dataset.editIndex !== '' ? parseInt(form.dataset.editIndex) : null;
+        const labelObj = { name, color: colorInput.value, description: descInput.value.trim() };
+
+        if (editIndex !== null && !isNaN(editIndex)) {
+            labels[editIndex] = labelObj;
+            this.showNotification('Label updated', 'success');
+        } else {
+            // Check for duplicates
+            if (labels.find(l => l.name.toLowerCase() === name.toLowerCase())) {
+                this.showNotification('A label with that name already exists', 'error');
+                return;
+            }
+            labels.push(labelObj);
+            this.showNotification('Label added', 'success');
+        }
+
+        this.saveLabels(labels);
+        this.closeLabelForm();
+        this.renderLabelsList();
+    }
+
+    setupLabelEventListeners() {
+        document.getElementById('add-label-btn')?.addEventListener('click', () => {
+            this.openLabelForm(null);
+        });
+
+        document.getElementById('reset-labels-btn')?.addEventListener('click', () => {
+            if (confirm('Reset labels to GitHub defaults? This will replace all current labels.')) {
+                this.saveLabels(SettingsManager.DEFAULT_LABELS.map(l => ({ ...l })));
+                this.renderLabelsList();
+                this.closeLabelForm();
+                this.showNotification('Labels reset to defaults', 'success');
             }
         });
 
-        // Boards tab - Save board
-        document.getElementById('save-board-btn')?.addEventListener('click', () => {
-            if (this.boardManager) {
-                const boardName = this.boardManager.currentBoardName || 'default';
-                this.boardManager.saveBoard(boardName);
-                this.showSaveComplete();
-            }
+        document.getElementById('label-save-btn')?.addEventListener('click', () => {
+            this.saveLabelForm();
         });
 
-        // Auto-save toggle
-        document.getElementById('auto-save-btn')?.addEventListener('click', () => this.toggleAutoSave());
-
-        // Export JSON
-        document.getElementById('export-json-btn')?.addEventListener('click', () => {
-            if (this.boardManager) this.boardManager.exportBoardJSON();
+        document.getElementById('label-cancel-btn')?.addEventListener('click', () => {
+            this.closeLabelForm();
         });
 
-        // Import JSON button
-        document.getElementById('import-json-btn')?.addEventListener('click', () => {
-            document.getElementById('import-json-input')?.click();
+        // Live colour preview
+        document.getElementById('label-color-input')?.addEventListener('input', (e) => {
+            const preview = document.getElementById('label-color-preview');
+            if (preview) preview.style.background = e.target.value;
         });
 
-        // Import JSON file input
-        document.getElementById('import-json-input')?.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0] && this.boardManager) {
-                this.boardManager.importBoardJSON(e.target.files[0]);
-                e.target.value = '';
-            }
-        });
-
-        // Panels tab
-        document.getElementById('panel-count')?.addEventListener('change', () => {
-            this.panelConfig.count = parseInt(document.getElementById('panel-count').value);
-            this.renderPanelConfig();
-        });
-
-        document.getElementById('save-panels-config')?.addEventListener('click', () => {
-            const inputs = document.querySelectorAll('#panel-names-config input');
-            inputs.forEach((input, index) => {
-                this.panelConfig.names[index] = input.value.trim() || `Column ${index + 1}`;
+        // Enter to save in name/desc inputs
+        ['label-name-input', 'label-desc-input'].forEach(id => {
+            document.getElementById(id)?.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.saveLabelForm();
+                if (e.key === 'Escape') this.closeLabelForm();
             });
-            const dateFormatSelect = document.getElementById('date-format');
-            if (dateFormatSelect) {
-                this.dateFormat = dateFormatSelect.value;
-            }
-            this.savePanelConfig();
-            this.showNotification('Panel configuration saved', 'success');
         });
-
-        // Role modal events
-        const roleModalClose = document.getElementById('role-modal-close');
-        if (roleModalClose) {
-            roleModalClose.addEventListener('click', () => this.closeRoleModal());
-        }
-        const roleCancelBtn = document.getElementById('role-cancel-btn');
-        if (roleCancelBtn) {
-            roleCancelBtn.addEventListener('click', () => this.closeRoleModal());
-        }
-        const roleSaveBtn = document.getElementById('role-save-btn');
-        if (roleSaveBtn) {
-            roleSaveBtn.addEventListener('click', () => this.saveRole());
-        }
-        const roleModal = document.getElementById('role-modal');
-        if (roleModal) {
-            roleModal.addEventListener('click', (e) => {
-                if (e.target.id === 'role-modal') this.closeRoleModal();
-            });
-        }
-
-        // Escape for role modal
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                const roleModal = document.getElementById('role-modal');
-                if (roleModal && roleModal.classList.contains('active')) {
-                    this.closeRoleModal();
-                }
-            }
-        });
-
-        // Escape for settings modal
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                const settingsModal = document.getElementById('settings-modal');
-                if (settingsModal && settingsModal.classList.contains('active')) {
-                    this.closeSettings();
-                }
-            }
-        });
-
     }
 
 
@@ -767,6 +962,11 @@ class SettingsManager {
         // Initialize comments tab if selected
         if (tabName === 'comments') {
             this.populateCommentsUserSelect();
+        }
+        // Initialize labels tab if selected
+        if (tabName === 'labels') {
+            this.renderLabelsList();
+            this.closeLabelForm();
         }
     }
 

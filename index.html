@@ -11,6 +11,73 @@
     <link rel="stylesheet" href="css/settings.css">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="fonts/fontawesome-free-6.5.0/css/all.min.css">
+    <style>
+        /* ===== field hints (milestone / project) ===== */
+        .field-hint {
+            display: block;
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--text-secondary, #888);
+            min-height: 14px;
+            transition: color 0.2s;
+        }
+
+        /* ===== Labels Tab ===== */
+        .labels-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+
+        .label-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 7px 10px; border-radius: 6px;
+            background: var(--bg-dark, #1a1a2e);
+            border: 1px solid var(--border-color, #333);
+            transition: background 0.15s;
+        }
+        .label-item:hover { background: var(--bg-medium, #252540); }
+
+        .label-badge {
+            display: inline-block; padding: 3px 10px;
+            border-radius: 999px; font-size: 11px; font-weight: 600;
+            white-space: nowrap; flex-shrink: 0;
+        }
+
+        .label-desc {
+            flex: 1; font-size: 11px; color: var(--text-secondary, #888);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        .label-item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        .label-item-actions .btn { padding: 3px 7px; font-size: 11px; }
+
+        /* Inline label form */
+        .label-form {
+            background: var(--bg-medium, #252540);
+            border: 1px solid var(--border-color, #444);
+            border-radius: 8px; padding: 10px 12px;
+            margin-bottom: 10px;
+        }
+        .label-form-row {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .label-form-row input[type="text"] {
+            flex: 1; min-width: 100px; padding: 5px 8px;
+            font-size: 12px; border-radius: 4px;
+            background: var(--bg-dark, #1a1a2e);
+            border: 1px solid var(--border-color, #444);
+            color: var(--text-primary, #eee);
+        }
+        .label-form-row input[type="text"]:focus {
+            outline: none; border-color: var(--accent-primary, #00d9ff);
+        }
+        .label-form-row input[type="color"] {
+            width: 32px; height: 28px; padding: 1px 2px;
+            border-radius: 4px; border: 1px solid var(--border-color, #444);
+            background: transparent; cursor: pointer; flex-shrink: 0;
+        }
+        #label-color-preview {
+            width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+    </style>
 </head>
 
 <body>
@@ -153,11 +220,10 @@
 
                     <div class="form-group">
                         <label for="task-milestone">Milestone</label>
-                        <input type="text" id="task-milestone" list="milestone-list"
-                            placeholder="Select or type a milestone">
-                        <datalist id="milestone-list">
+                        <select id="task-milestone">
                             <option value="">No Milestone</option>
-                        </datalist>
+                        </select>
+                        <small id="milestone-hint" class="field-hint"></small>
                     </div>
 
                     <div class="form-group">
@@ -165,11 +231,7 @@
                         <select id="task-project">
                             <option value="">No Project</option>
                         </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="task-parent-issue">Parent Issue # (optional)</label>
-                        <input type="number" id="task-parent-issue" min="1" placeholder="Enter parent issue number">
+                        <small id="project-hint" class="field-hint"></small>
                     </div>
 
                     <div class="form-group">
@@ -433,6 +495,7 @@
                     <button class="settings-tab active" data-tab="roles">Roles</button>
                     <button class="settings-tab" data-tab="panels">Panels</button>
                     <button class="settings-tab" data-tab="comments">Comments</button>
+                    <button class="settings-tab" data-tab="labels">Labels</button>
                 </div>
 
                 <!-- Boards Tab -->
@@ -526,6 +589,30 @@
                     </div>
                     <div id="user-comments-list" class="user-comments-list">
                         <p class="empty-message">Select a user to view their comments</p>
+                    </div>
+                </div>
+
+                <!-- Labels Tab -->
+                <div class="settings-tab-content" id="tab-labels">
+                    <h4>Labels</h4>
+                    <p class="settings-description">Create and manage labels for tasks. These labels can be synced with GitHub Issues.</p>
+                    <div style="display:flex; gap:8px; margin-bottom:14px;">
+                        <button class="btn primary" id="add-label-btn"><i class="fas fa-plus"></i> New Label</button>
+                        <button class="btn" id="reset-labels-btn"><i class="fas fa-undo"></i> Reset to Defaults</button>
+                    </div>
+                    <!-- Inline add/edit form -->
+                    <div id="label-form" class="label-form" style="display:none;">
+                        <div class="label-form-row">
+                            <div id="label-color-preview"></div>
+                            <input type="text" id="label-name-input" placeholder="Label name..." maxlength="50">
+                            <input type="color" id="label-color-input" value="#0075ca" title="Pick colour">
+                            <input type="text" id="label-desc-input" placeholder="Description (optional)" maxlength="100">
+                            <button class="btn primary btn-sm" id="label-save-btn" title="Save"><i class="fas fa-check"></i></button>
+                            <button class="btn btn-sm" id="label-cancel-btn" title="Cancel"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <div id="labels-list" class="labels-list">
+                        <!-- Dynamically populated -->
                     </div>
                 </div>
             </div>

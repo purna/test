@@ -70,9 +70,12 @@ class GitHubAPI {
         }
 
         const url = endpoint.startsWith('http') ? endpoint : `${this.BASE_URL}${endpoint}`;
-        
+
+        // GitHub classic PATs use 'token' prefix, OAuth/fine-grained use 'Bearer'
+        const authPrefix = this.accessToken.startsWith('ghp_') ? 'token' : 'Bearer';
+
         const headers = {
-            'Authorization': `${this.tokenType === 'oauth' ? 'Bearer' : 'Bearer'} ${this.accessToken}`,
+            'Authorization': `${authPrefix} ${this.accessToken}`,
             'Accept': 'application/vnd.github+json',
             'X-GitHub-Api-Version': '2022-11-28',
             ...options.headers
@@ -178,11 +181,38 @@ class GitHubAPI {
     }
 
     /**
-     * Get user's ProjectsV2
-     * Uses GraphQL API (no REST fallback — requires 'repo' or 'read:user' scopes)
+     * Get ProjectsV2 linked to a specific repository (plus viewer's own projects as fallback)
+     * Requires 'repo' scope on PAT or project read permission on fine-grained token.
      */
-    async getProjects() {
-        const query = `
+    async getProjects(owner, repo) {
+        // If we have a repo, fetch projects linked to that repo first
+        if (owner && repo) {
+            const repoQuery = `
+                query($owner: String!, $repo: String!) {
+                    repository(owner: $owner, name: $repo) {
+                        projectsV2(first: 20) {
+                            nodes {
+                                id
+                                title
+                                number
+                                url
+                            }
+                        }
+                    }
+                }
+            `;
+            try {
+                const data = await this.graphql(repoQuery, { owner, repo });
+                const repoProjects = data?.repository?.projectsV2?.nodes || [];
+                const filtered = repoProjects.filter(p => p && p.id && p.title);
+                if (filtered.length > 0) return filtered;
+            } catch (error) {
+                console.warn('Failed to fetch repo ProjectsV2, trying viewer projects:', error.message);
+            }
+        }
+
+        // Fallback: fetch viewer's own projects
+        const viewerQuery = `
             query {
                 viewer {
                     projectsV2(first: 20) {
@@ -190,20 +220,18 @@ class GitHubAPI {
                             id
                             title
                             number
+                            url
                         }
                     }
                 }
             }
         `;
-        
         try {
-            const data = await this.graphql(query);
+            const data = await this.graphql(viewerQuery);
             const projects = data?.viewer?.projectsV2?.nodes || [];
-            // Filter out any null entries
             return projects.filter(p => p && p.id && p.title);
         } catch (error) {
-            console.warn('Failed to fetch ProjectsV2:', error.message);
-            // Return empty array — projects UI will show "no projects" message
+            console.warn('Failed to fetch viewer ProjectsV2:', error.message);
             return [];
         }
     }
@@ -528,9 +556,9 @@ class GitHubBoards {
         const repo = this.api.selectedRepo;
         if (!repo) return [];
 
-        // Try to get GitHub Projects first
+        // Try to get GitHub Projects first (pass owner+repo for repo-linked projects)
         try {
-            const projects = await this.api.getProjects();
+            const projects = await this.api.getProjects(repo.owner.login, repo.name);
             if (projects && projects.length > 0) {
                 return projects;
             }
@@ -731,7 +759,7 @@ class GitHubBoards {
                     dueDate: taskData.dueDate || '',
                     milestone: milestone,
                     project: taskData.project || null,
-                    parentIssueId: taskData.parentIssueId || null,
+                    parentIssueId: null,
                     labels: labels,
                     comments: taskData.comments || [],
                     attachments: taskData.attachments || [],
@@ -854,11 +882,6 @@ class GitHubBoards {
             body += `\n\n**Project:** ${task.project.title}`;
         }
         
-        // Mention parent issue if set to create a visible link in GitHub
-        if (task.parentIssueId) {
-            body += `\n\n**Parent Issue:** #${task.parentIssueId}`;
-        }
-        
         // Add metadata as JSON for parsing on pull
         const metadata = {
             _pixelKanban: true,
@@ -867,7 +890,6 @@ class GitHubBoards {
             milestone: task.milestone || null,
             labels: task.labels || [],
             project: task.project || null,
-            parentIssueId: task.parentIssueId || null,
             description: task.description,
             comments: task.comments || [],
             attachments: task.attachments || []

@@ -18,18 +18,36 @@ class KanbanBoard {
 
     /**
      * Get a color for a label - accepts string label name or object {name, color}
-     * Prefers GitHub label color if cached or provided, otherwise generates a consistent color
+     * First checks local label settings, then GitHub cache, then generates a consistent color
+     * Returns color without # prefix
      */
     getLabelColor(label) {
         // If label is an object with color property, use it
         if (typeof label === 'object' && label && label.color) {
-            return '#' + label.color;
+            return label.color.replace('#', '');
         }
 
-        // If label is a string, check cache first
+        // Get label name as string
         const labelName = typeof label === 'string' ? label : (label?.name || '');
+        if (!labelName) return '0075ca'; // Default blue
+
+        // First check local label settings (kanban-labels in localStorage)
+        try {
+            const stored = localStorage.getItem('kanban-labels');
+            if (stored) {
+                const labels = JSON.parse(stored);
+                const found = labels.find(l => l.name === labelName);
+                if (found && found.color) {
+                    return found.color.replace('#', '');
+                }
+            }
+        } catch (e) {
+            // Ignore parse errors
+        }
+
+        // Then check GitHub label cache
         if (this.labelColorMap && this.labelColorMap[labelName]) {
-            return '#' + this.labelColorMap[labelName];
+            return this.labelColorMap[labelName].replace('#', '');
         }
 
         // Fallback: generate consistent color from name
@@ -506,18 +524,6 @@ class KanbanBoard {
         return '';
     }
 
-    // Generate a consistent color for a label based on its name
-    getLabelColor(labelName) {
-        let hash = 0;
-        for (let i = 0; i < labelName.length; i++) {
-            hash = labelName.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const h = Math.abs(hash % 360);
-        const s = 60 + (Math.abs(hash) % 20);
-        const l = 40 + (Math.abs(hash) % 20);
-        return this.hslToHex(h, s, l);
-    }
-
     // Convert HSL to hex
     hslToHex(h, s, l) {
         s /= 100;
@@ -644,9 +650,16 @@ class KanbanBoard {
         await this.populateLabelsDropdown();
         await this.populateProjectDropdown();
 
-        // Set milestone after populating dropdown
-        if (task && milestoneSelect) {
-            milestoneSelect.value = task.milestone ? task.milestone.name || task.milestone : '';
+        // Set milestone after populating dropdown — match by number
+        if (task && milestoneSelect && task.milestone) {
+            const num = task.milestone.number;
+            const title = task.milestone.name || task.milestone.title || task.milestone;
+            // Try matching by number first, then by title text
+            const byNum = num ? [...milestoneSelect.options].find(o => String(o.dataset.number) === String(num)) : null;
+            const byTitle = title ? [...milestoneSelect.options].find(o => o.dataset.title === title || o.textContent === title) : null;
+            if (byNum) milestoneSelect.value = byNum.value;
+            else if (byTitle) milestoneSelect.value = byTitle.value;
+            else milestoneSelect.value = '';
         } else if (milestoneSelect) {
             milestoneSelect.value = '';
         }
@@ -661,14 +674,6 @@ class KanbanBoard {
             }
         } else if (projectSelect) {
             projectSelect.value = '';
-        }
-
-        // Set parent issue field
-        const parentIssueInput = document.getElementById('task-parent-issue');
-        if (task && parentIssueInput) {
-            parentIssueInput.value = task.parentIssueId || '';
-        } else if (parentIssueInput) {
-            parentIssueInput.value = '';
         }
 
         // Set selected labels after options are rendered
@@ -1406,23 +1411,14 @@ class KanbanBoard {
         const form = document.getElementById('task-form');
         const taskId = form.dataset.taskId;
 
-        // Get milestone value from input + datalist
-        const milestoneInput = document.getElementById('task-milestone');
+        // Get milestone value from select
+        const milestoneSelect = document.getElementById('task-milestone');
         let milestone = null;
-        if (milestoneInput && milestoneInput.value) {
-            const val = milestoneInput.value.trim();
-            // Try to find the matching datalist option to get the number
-            const datalist = document.getElementById('milestone-list');
-            let milestoneNumber = null;
-            if (datalist) {
-                const matchingOption = datalist.querySelector(`option[value="${val}"]`);
-                if (matchingOption) {
-                    milestoneNumber = parseInt(matchingOption.dataset.number) || null;
-                }
-            }
+        if (milestoneSelect && milestoneSelect.value) {
+            const selectedOption = milestoneSelect.selectedOptions[0];
             milestone = {
-                name: val,
-                number: milestoneNumber
+                number: parseInt(milestoneSelect.value) || null,
+                name: selectedOption ? selectedOption.dataset.title || selectedOption.textContent : ''
             };
         }
 
@@ -1436,14 +1432,6 @@ class KanbanBoard {
             };
         }
 
-        // Get parent issue value
-        const parentIssueInput = document.getElementById('task-parent-issue');
-        let parentIssueId = null;
-        if (parentIssueInput && parentIssueInput.value) {
-            const parsed = parseInt(parentIssueInput.value);
-            if (!isNaN(parsed)) parentIssueId = parsed;
-        }
-
         // Get form values directly
         const taskData = {
             emoji: document.getElementById('task-emoji').value,
@@ -1454,7 +1442,7 @@ class KanbanBoard {
             dueDate: document.getElementById('task-due-date').value,
             milestone: milestone,
             project: project,
-            parentIssueId: parentIssueId,
+            parentIssueId: null,
             backgroundColor: document.getElementById('task-bg-color').value,
             attachments: this.currentAttachments || [],
             labels: this.getSelectedLabels()
@@ -1516,34 +1504,38 @@ class KanbanBoard {
         select.value = currentValue;
     }
 
-    // GitHub Milestone Integration (with local fallback)
+    // GitHub Milestone Integration
     async populateMilestoneDropdown() {
-        const input = document.getElementById('task-milestone');
-        if (!input) return;
+        const select = document.getElementById('task-milestone');
+        const hint   = document.getElementById('milestone-hint');
+        if (!select) return;
 
-        const currentValue = input.value;
-        const datalist = document.getElementById('milestone-list');
-        if (!datalist) return;
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">No Milestone</option>';
 
-        // Clear existing options except the first one
-        datalist.innerHTML = '<option value="">No Milestone</option>';
+        const setHint = (msg, isError = false) => {
+            if (hint) {
+                hint.textContent = msg;
+                hint.style.color = isError ? 'var(--error-color, #ff6b6b)' : 'var(--text-secondary, #888)';
+            }
+        };
 
-        // If GitHub not connected, allow custom milestone entry
+        // Not connected — disable and explain
         if (!window.githubBoardsUI || !window.githubBoardsUI.githubBoards.isConnected()) {
-            input.disabled = false;
-            input.title = 'Enter milestone name manually (will sync when GitHub connected)';
+            select.disabled = true;
+            setHint('Connect to GitHub to load milestones');
             return;
         }
 
         const repo = window.githubBoardsUI.githubBoards.getSelectedRepo();
         if (!repo) {
-            input.disabled = false;
-            input.title = 'Select a repository to use milestones';
+            select.disabled = true;
+            setHint('Select a repository to load milestones');
             return;
         }
 
-        input.disabled = false;
-        input.title = '';
+        select.disabled = true;
+        setHint('Loading milestones…');
 
         try {
             const milestones = await window.githubBoardsUI.githubBoards.api.getRepoMilestones(
@@ -1551,63 +1543,82 @@ class KanbanBoard {
                 repo.name
             );
 
+            if (milestones.length === 0) {
+                setHint('No open milestones in this repository');
+                select.disabled = false;
+                return;
+            }
+
             milestones.forEach(ms => {
                 const option = document.createElement('option');
-                option.value = ms.title;
+                option.value = ms.number;           // store numeric ID as value
                 option.textContent = ms.title;
-                // Store number as data attribute on the option for later retrieval
+                option.dataset.title  = ms.title;
                 option.dataset.number = ms.number;
-                datalist.appendChild(option);
+                select.appendChild(option);
             });
 
-            // Restore selection if editing
-            input.value = currentValue;
+            // Restore previous selection — match by number or title
+            if (currentValue) {
+                // Try number first, then title
+                const byNumber = [...select.options].find(o => String(o.dataset.number) === String(currentValue));
+                const byTitle  = [...select.options].find(o => o.dataset.title  === currentValue);
+                if (byNumber) select.value = byNumber.value;
+                else if (byTitle) select.value = byTitle.value;
+            }
+
+            setHint(`${milestones.length} milestone${milestones.length !== 1 ? 's' : ''} loaded`);
+            select.disabled = false;
 
         } catch (error) {
             console.warn('Failed to load milestones:', error);
-            // Still allow manual entry
-            input.title = 'Failed to load — you can still type a milestone';
-            // Show error in UI if possible
-            const milestoneError = document.getElementById('milestone-error');
-            if (milestoneError) {
-                milestoneError.textContent = `Failed to load milestones: ${error.message}`;
-                milestoneError.style.display = 'block';
-            }
+            setHint('Failed to load milestones: ' + error.message, true);
+            select.disabled = false;
         }
     }
 
     // GitHub Projects Integration
     async populateProjectDropdown() {
         const select = document.getElementById('task-project');
+        const hint   = document.getElementById('project-hint');
         if (!select) return;
 
         const currentValue = select.value;
-
-        // Clear existing options except the first one
         select.innerHTML = '<option value="">No Project</option>';
 
-        // Disable if GitHub integration not active
+        const setHint = (msg, isError = false) => {
+            if (hint) {
+                hint.textContent = msg;
+                hint.style.color = isError ? 'var(--error-color, #ff6b6b)' : 'var(--text-secondary, #888)';
+            }
+        };
+
         if (!window.githubBoardsUI || !window.githubBoardsUI.githubBoards.isConnected()) {
             select.disabled = true;
-            select.title = 'Connect to GitHub to use projects';
+            setHint('Connect to GitHub to load projects');
             return;
         }
 
         const repo = window.githubBoardsUI.githubBoards.getSelectedRepo();
         if (!repo) {
             select.disabled = true;
-            select.title = 'Select a repository to use projects';
+            setHint('Select a repository to load projects');
             return;
         }
 
-        select.disabled = false;
-        select.title = '';
+        select.disabled = true;
+        setHint('Loading projects…');
 
         try {
-            const projects = await window.githubBoardsUI.githubBoards.api.getProjects();
+            // Pass owner + repo so getProjects() can try repo-linked projects first
+            const projects = await window.githubBoardsUI.githubBoards.api.getProjects(
+                repo.owner.login,
+                repo.name
+            );
+
             if (!projects || projects.length === 0) {
                 select.disabled = true;
-                select.title = 'No projects found in this repository';
+                setHint('No projects found — create one on GitHub first');
                 return;
             }
 
@@ -1615,24 +1626,20 @@ class KanbanBoard {
                 const option = document.createElement('option');
                 option.value = proj.id;
                 option.textContent = proj.title;
-                // Store number if available (for classic projects)
                 option.dataset.number = proj.number || '';
                 select.appendChild(option);
             });
 
-            // Restore selection if editing
-            select.value = currentValue;
+            // Restore previous selection
+            if (currentValue) select.value = currentValue;
+
+            setHint(`${projects.length} project${projects.length !== 1 ? 's' : ''} loaded`);
+            select.disabled = false;
 
         } catch (error) {
             console.warn('Failed to load projects:', error);
-            select.disabled = true;
-            select.title = 'Failed to load projects';
-            // Show error in UI if possible
-            const projectError = document.getElementById('project-error');
-            if (projectError) {
-                projectError.textContent = `Failed to load projects: ${error.message}`;
-                projectError.style.display = 'block';
-            }
+            select.disabled = false;
+            setHint('Failed to load projects: ' + error.message, true);
         }
     }
 
@@ -1654,10 +1661,27 @@ class KanbanBoard {
         const selectedContainer = document.getElementById('selected-labels');
         if (selectedContainer) selectedContainer.innerHTML = '';
 
-        // Default GitHub labels fallback
+        // Load locally configured labels from settings (kanban-labels in localStorage)
+        let localLabels = [];
+        try {
+            const stored = localStorage.getItem('kanban-labels');
+            if (stored) {
+                localLabels = JSON.parse(stored);
+            }
+        } catch (e) {
+            console.warn('Failed to load local labels:', e);
+        }
+
+        // Default GitHub labels fallback (with default colors)
         const defaultLabels = [
-            'documentation', 'duplicate', 'enhancement', 'good first issue',
-            'help wanted', 'invalid', 'question', 'wontfix'
+            { name: 'documentation', color: '0075ca' },
+            { name: 'duplicate', color: 'cfd3d7' },
+            { name: 'enhancement', color: 'a2eeef' },
+            { name: 'good first issue', color: '7057ff' },
+            { name: 'help wanted', color: '008672' },
+            { name: 'invalid', color: 'e4e669' },
+            { name: 'question', color: 'd876e3' },
+            { name: 'wontfix', color: 'ffffff' }
         ];
 
         let labels = [];
@@ -1667,39 +1691,60 @@ class KanbanBoard {
             const repo = window.githubBoardsUI.githubBoards.getSelectedRepo();
             if (repo) {
                 try {
-                    labels = await window.githubBoardsUI.githubBoards.api.getRepoLabels(
+                    const githubLabels = await window.githubBoardsUI.githubBoards.api.getRepoLabels(
                         repo.owner.login,
                         repo.name
                     );
-                    // Sort alphabetically
-                    labels.sort((a, b) => a.name.localeCompare(b.name));
-                    // Cache colors
+                    // Merge: start with local labels, override with GitHub labels (by name)
                     this.labelColorMap = this.labelColorMap || {};
-                    labels.forEach(label => {
-                        this.labelColorMap[label.name] = label.color;
+                    githubLabels.forEach(gl => {
+                        this.labelColorMap[gl.name] = gl.color;
                     });
+
+                    // Build merged list: prefer GitHub labels, fill missing from local/default
+                    const allNames = new Set([
+                        ...githubLabels.map(l => l.name),
+                        ...localLabels.map(l => l.name),
+                        ...defaultLabels.map(l => l.name)
+                    ]);
+
+                    labels = [];
+                    allNames.forEach(name => {
+                        let label = githubLabels.find(l => l.name === name)
+                            || localLabels.find(l => l.name === name)
+                            || defaultLabels.find(l => l.name === name);
+                        if (label) {
+                            labels.push({ name: label.name, color: label.color });
+                        }
+                    });
+                    labels.sort((a, b) => a.name.localeCompare(b.name));
                 } catch (error) {
-                    console.warn('Failed to load labels, using defaults:', error);
-                    labels = defaultLabels.map(name => ({ name, color: this.getLabelColor(name) }));
+                    console.warn('Failed to load GitHub labels, using local/default:', error);
+                    labels = [...localLabels, ...defaultLabels.filter(d => !localLabels.find(l => l.name === d.name))];
+                    if (labels.length === 0) labels = defaultLabels;
                 }
             } else {
-                labels = defaultLabels.map(name => ({ name, color: this.getLabelColor(name) }));
+                // No repo selected, use local labels or defaults
+                labels = localLabels.length > 0 ? localLabels : defaultLabels;
             }
         } else {
-            labels = defaultLabels.map(name => ({ name, color: this.getLabelColor(name) }));
+            // No GitHub connection, use local labels or defaults
+            labels = localLabels.length > 0 ? localLabels : defaultLabels;
         }
 
         // Build options HTML
         optionsContainer.innerHTML = '';
         labels.forEach(label => {
+            // Ensure color doesn't have # prefix for CSS
+            const color = (label.color || '').replace('#', '');
             const option = document.createElement('div');
             option.className = 'label-option';
             option.dataset.value = label.name;
-            option.dataset.color = label.color;
+            option.dataset.color = color;
             option.setAttribute('role', 'option');
             option.setAttribute('tabindex', '-1');
             option.innerHTML = `
-                <span class="label-color-dot" style="background-color: #${label.color}"></span>
+                <span class="label-color-dot" style="background-color: #${color}"></span>
                 <span class="label-name">${this.escapeHtml(label.name)}</span>
                 <span class="label-check"><i class="fas fa-check"></i></span>
             `;
@@ -1894,7 +1939,8 @@ class KanbanBoard {
 
         labelArray.forEach(label => {
             const labelName = typeof label === 'object' ? label.name : label;
-            const color = typeof label === 'object' && label.color ? label.color : this.getLabelColor(labelName);
+            const colorRaw = typeof label === 'object' && label.color ? label.color : this.getLabelColor(labelName);
+            const color = (colorRaw || '').replace('#', '');
             const badge = document.createElement('span');
             badge.className = 'selected-label-badge';
             badge.dataset.label = labelName;

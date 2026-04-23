@@ -139,10 +139,24 @@ class UserManager {
         }
     }
 
+    // Get user by Firebase UID
+    getUserByFirebaseUid(uid) {
+        return this.users.find(u => u.firebaseUid === uid);
+    }
+
     // Sync Firebase user with local user system
     async syncFirebaseUser(firebaseUser) {
-        // Check if user already exists in local system
-        let localUser = this.getUserByEmail(firebaseUser.email);
+        // Check if user already exists by Firebase UID first (best practice)
+        let localUser = this.getUserByFirebaseUid(firebaseUser.uid);
+        
+        // Fallback to email match for existing users created before UID migration
+        if (!localUser) {
+            localUser = this.getUserByEmail(firebaseUser.email);
+            if (localUser) {
+                // Update existing user with Firebase UID
+                this.updateUser(localUser.id, { firebaseUid: firebaseUser.uid });
+            }
+        }
         
         if (!localUser) {
             // Create new local user from Firebase data
@@ -150,7 +164,7 @@ class UserManager {
                 name: firebaseUser.displayName,
                 email: firebaseUser.email,
                 role: 'developer',
-                firebaseUid: firebaseUser.uid, // Store Firebase UID
+                firebaseUid: firebaseUser.uid,
                 photoURL: firebaseUser.photoURL || ''
             });
             console.log('Created local user from Firebase:', localUser);
@@ -160,6 +174,21 @@ class UserManager {
                 name: firebaseUser.displayName,
                 photoURL: firebaseUser.photoURL || ''
             });
+        }
+
+        // Sync user to Firestore if available
+        if (window.firebaseDb) {
+            try {
+                await window.firebaseDb.collection("users").doc(firebaseUser.uid).set({
+                    name: firebaseUser.displayName,
+                    email: firebaseUser.email,
+                    photoURL: firebaseUser.photoURL || '',
+                    lastLogin: new Date().toISOString()
+                }, { merge: true });
+                console.log('User synced to Firestore');
+            } catch (error) {
+                console.error('Error syncing user to Firestore:', error);
+            }
         }
         
         // Set as current user

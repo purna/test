@@ -7,13 +7,15 @@
 // Expose on window for cross-script access
 window.firebaseApp = null;
 window.firebaseAuth = null;
+window.firebaseDb = null;
 
 // Check if Firebase is configured (config.js must be loaded first)
-if (typeof appFirebaseConfig !== 'undefined' && appFirebaseConfig.apiKey && appFirebaseConfig.apiKey !== "YOUR_API_KEY") {
+if (typeof appFirebaseConfig !== 'undefined' && appFirebaseConfig.apiKey) {
     try {
         window.firebaseApp = firebase.initializeApp(appFirebaseConfig);
         window.firebaseAuth = firebase.auth();
-        console.log('Firebase initialized successfully');
+        window.firebaseDb = firebase.firestore();
+        console.log('Firebase initialized successfully (App, Auth, Firestore)');
     } catch (error) {
         console.warn('Firebase initialization failed:', error.message);
     }

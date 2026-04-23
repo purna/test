@@ -5,29 +5,29 @@
     --bg-dark: #1a1a2e;
     --bg-medium: #16213e;
     --bg-light: #1e293b;
-    
+
     /* ACCENT COLORS - Cyberpunk/Terminal Inspired */
     --accent-primary: #00ff41;
     --accent-secondary: #ff006e;
     --accent-tertiary: #00d9ff;
-    
+
     /* TEXT & BORDERS */
     --text-primary: #e0e7ff;
     --text-secondary: #94a3b8;
     --border-color: #2d3748;
-    
+
     /* LAYOUT DIMENSIONS */
     --header-height: 50px;
     --footer-height: 56px;
     --border-glow: rgba(0, 255, 65, 0.3);
-    
+
     /* TASK COLORS */
     --primary-color: #00d9ff;
     --success-color: #00ff41;
     --warning-color: #ffc107;
     --danger-color: #ff006e;
     --info-color: #00d9ff;
-    
+
     --shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     --border-radius: 6px;
     --transition: all 0.2s ease;
@@ -256,7 +256,8 @@ header {
 }
 
 .add-task-btn::before {
-    content: "\f067"; /* Font Awesome plus icon */
+    content: "\f067";
+    /* Font Awesome plus icon */
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
     font-size: 0.8rem;
@@ -380,7 +381,8 @@ header {
     padding: 12px 16px 8px;
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
-    background: #162030; /* 20% darker than --bg-light */
+    background: #162030;
+    /* 20% darker than --bg-light */
 }
 
 /* Task Card Body */
@@ -512,7 +514,8 @@ header {
 }
 
 .task-assignee::before {
-    content: "\f0e0"; /* Font Awesome envelope icon */
+    content: "\f0e0";
+    /* Font Awesome envelope icon */
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
     font-size: 0.75rem;
@@ -520,7 +523,8 @@ header {
 }
 
 .task-due-date::before {
-    content: "\f133"; /* Font Awesome calendar icon */
+    content: "\f133";
+    /* Font Awesome calendar icon */
     font-family: "Font Awesome 6 Free";
     font-weight: 400;
     font-size: 0.75rem;
@@ -583,13 +587,40 @@ header {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
-.task-milestone-badge.milestone-backlog { background: #6e7681; color: #fff; }
-.task-milestone-badge.milestone-todo { background: #0e7a86; color: #fff; }
-.task-milestone-badge.milestone-in-progress { background: #a371f7; color: #fff; }
-.task-milestone-badge.milestone-done { background: #3fb950; color: #fff; }
-.task-milestone-badge.milestone-sprint-1 { background: #f7d358; color: #000; }
-.task-milestone-badge.milestone-sprint-2 { background: #ff6b6b; color: #fff; }
-.task-milestone-badge.milestone-release { background: #4ecdc4; color: #000; }
+.task-milestone-badge.milestone-backlog {
+    background: #6e7681;
+    color: #fff;
+}
+
+.task-milestone-badge.milestone-todo {
+    background: #0e7a86;
+    color: #fff;
+}
+
+.task-milestone-badge.milestone-in-progress {
+    background: #a371f7;
+    color: #fff;
+}
+
+.task-milestone-badge.milestone-done {
+    background: #3fb950;
+    color: #fff;
+}
+
+.task-milestone-badge.milestone-sprint-1 {
+    background: #f7d358;
+    color: #000;
+}
+
+.task-milestone-badge.milestone-sprint-2 {
+    background: #ff6b6b;
+    color: #fff;
+}
+
+.task-milestone-badge.milestone-release {
+    background: #4ecdc4;
+    color: #000;
+}
 
 /* Task Labels Badge */
 .task-labels {
@@ -614,7 +645,7 @@ header {
     line-height: 1.4;
     vertical-align: middle;
     transition: all 0.15s ease-in-out;
-    
+
 }
 
 .task-label-badge:hover {
@@ -686,6 +717,7 @@ header {
         opacity: 0;
         transform: translateY(-8px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -788,7 +820,8 @@ header {
 }
 
 .task-due-date::before {
-    content: "\f133"; /* Font Awesome calendar icon */
+    content: "\f133";
+    /* Font Awesome calendar icon */
     font-family: "Font Awesome 6 Free";
     font-weight: 400;
     font-size: 0.75rem;
@@ -1827,7 +1860,7 @@ header {
 /* Responsive Design */
 @media (max-width: 768px) {
     .header-controls {
-        flex-direction: column;
+        flex-direction: row;
         gap: 0.5rem;
         width: auto;
         min-width: 60px;

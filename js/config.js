@@ -245,38 +245,44 @@ const appFirebaseConfig = {
     /**
      * Firebase API Key
      * Get from: Project Settings > General > Your apps > Web app
+     * Example: "AIzaSyDXXXXXXXXXXXXXXXXXXXXXXX"
      */
-    apiKey: '',
+    apiKey: 'YOUR_API_KEY',
     
     /**
      * Firebase Auth Domain
      * Format: YOUR_PROJECT_ID.firebaseapp.com
+     * Example: "your-project.firebaseapp.com"
      */
-    authDomain: '',
+    authDomain: 'YOUR_PROJECT.firebaseapp.com',
     
     /**
      * Firebase Project ID
      * Your project ID from Firebase console
+     * Example: "your-project-id"
      */
-    projectId: '',
+    projectId: 'YOUR_PROJECT_ID',
     
     /**
      * Firebase Storage Bucket
      * Format: YOUR_PROJECT_ID.appspot.com
+     * Example: "your-project.appspot.com"
      */
-    storageBucket: '',
+    storageBucket: 'YOUR_PROJECT.appspot.com',
     
     /**
      * Firebase Messaging Sender ID
      * Get from: Project Settings > Cloud Messaging
+     * Example: "123456789012"
      */
-    messagingSenderId: '',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
     
     /**
      * Firebase App ID
      * Get from: Project Settings > General > Your apps
+     * Example: "1:123456789012:web:abcdef1234567890"
      */
-    appId: ''
+    appId: 'YOUR_APP_ID'
 };
 
 /* ============================================================================

@@ -177,7 +177,7 @@
 }
 
 .form-group input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
+    filter: invert(1);
 }
 
 /* Form validation states */
@@ -313,7 +313,7 @@
 /* ============================================= */
 @media (max-width: 768px) {
     .header-controls {
-        flex-direction: column;
+        flex-direction: row;
         gap: 0.5rem;
     }
 
