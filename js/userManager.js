@@ -257,13 +257,14 @@ class UserManager {
     }
 
     // User CRUD Operations
-    createUser(userData) {
+     createUser(userData) {
         const user = {
             id: this.nextUserId++,
             name: userData.name,
             email: userData.email || '',
             role: userData.role || 'developer',
             firebaseUid: userData.firebaseUid || null,
+            githubUsername: userData.githubUsername || null,
             photoURL: userData.photoURL || '',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()

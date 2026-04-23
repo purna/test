@@ -276,7 +276,7 @@
     display: none;
 }
 
-.setting-label input[type="checkbox"] + span.checkmark {
+.setting-label input[type="checkbox"]+span.checkmark {
     position: relative;
     padding-left: 24px;
     cursor: pointer;
@@ -286,7 +286,7 @@
     user-select: none;
 }
 
-.setting-label input[type="checkbox"] + span.checkmark::before {
+.setting-label input[type="checkbox"]+span.checkmark::before {
     content: '';
     position: absolute;
     left: 0;
@@ -300,11 +300,11 @@
     transition: all 0.2s;
 }
 
-.setting-label input[type="checkbox"]:checked + span.checkmark {
+.setting-label input[type="checkbox"]:checked+span.checkmark {
     color: var(--accent-primary);
 }
 
-.setting-label input[type="checkbox"]:checked + span.checkmark::before {
+.setting-label input[type="checkbox"]:checked+span.checkmark::before {
     background: var(--accent-primary);
     border-color: var(--accent-primary);
     box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
@@ -468,7 +468,8 @@
    7. SETTINGS DESCRIPTIONS & HELP TEXT
    ============================================= */
 
-.setting-description {
+.setting-description,
+.settings-description {
     font-size: 0.7rem;
     color: var(--text-secondary);
     margin-top: 2px;
@@ -478,6 +479,8 @@
     font-style: italic;
     opacity: 0.8;
 }
+
+
 
 /* =============================================
    8. TUTORIAL TAB SPECIFIC STYLES
@@ -597,7 +600,7 @@
     accent-color: var(--accent-primary);
 }
 
-#setting-export-transparent + label {
+#setting-export-transparent+label {
     display: flex;
     align-items: center;
     gap: 8px;

@@ -100,17 +100,15 @@ class GitHubAPI {
 
     /**
      * Make GraphQL request
+     * Returns null on error instead of throwing (caller decides how to handle)
      */
     async graphql(query, variables = {}) {
         if (!this.accessToken) {
-            throw new Error('Not authenticated with GitHub');
+            console.warn('Not authenticated with GitHub');
+            return null;
         }
 
         try {
-            if (!this.accessToken) {
-                throw new Error('Not authenticated with GitHub. Please configure your GitHub Personal Access Token in js/config.js or via the GitHub modal.');
-            }
-
             const response = await fetch(this.GRAPHQL_URL, {
                 method: 'POST',
                 headers: {
@@ -122,23 +120,33 @@ class GitHubAPI {
 
             if (!response.ok) {
                 const text = await response.text();
-                let errorMessage = `GitHub API error ${response.status}: ${text.slice(0, 200)}`;
+                // Don't throw for permission errors - return null instead
                 if (response.status === 401 || response.status === 403) {
-                    errorMessage += '. Check your GitHub token: ensure it is set in js/config.js, has not expired, and has the required scopes.';
+                    console.warn('GitHub GraphQL auth error (token may lack permissions):', text.slice(0, 200));
+                    return null;
                 }
-                throw new Error(errorMessage);
+                throw new Error(`GitHub API error ${response.status}: ${text.slice(0, 200)}`);
             }
 
             const result = await response.json();
-            
+
             if (result.errors) {
-                throw new Error(result.errors.map(e => e.message).join(', '));
+                // Check if it's a permission error
+                const isPermissionError = result.errors.some(e =>
+                    e.message && e.message.includes('Resource not accessible')
+                );
+                if (isPermissionError) {
+                    console.warn('GitHub GraphQL resource not accessible - token may need additional permissions or SSO authorization');
+                    return null;
+                }
+                console.warn('GraphQL errors:', result.errors.map(e => e.message).join(', '));
+                return null;
             }
 
             return result.data;
         } catch (error) {
-            console.error('GraphQL request failed:', error.message);
-            throw error;
+            console.warn('GraphQL request failed:', error.message);
+            return null;
         }
     }
 
@@ -183,6 +191,7 @@ class GitHubAPI {
     /**
      * Get ProjectsV2 linked to a specific repository (plus viewer's own projects as fallback)
      * Requires 'repo' scope on PAT or project read permission on fine-grained token.
+     * Returns empty array if GraphQL is not accessible (token lacks permissions).
      */
     async getProjects(owner, repo) {
         // If we have a repo, fetch projects linked to that repo first
@@ -201,13 +210,10 @@ class GitHubAPI {
                     }
                 }
             `;
-            try {
-                const data = await this.graphql(repoQuery, { owner, repo });
-                const repoProjects = data?.repository?.projectsV2?.nodes || [];
-                const filtered = repoProjects.filter(p => p && p.id && p.title);
-                if (filtered.length > 0) return filtered;
-            } catch (error) {
-                console.warn('Failed to fetch repo ProjectsV2, trying viewer projects:', error.message);
+            const repoData = await this.graphql(repoQuery, { owner, repo });
+            if (repoData?.repository?.projectsV2?.nodes) {
+                const repoProjects = repoData.repository.projectsV2.nodes.filter(p => p && p.id && p.title);
+                if (repoProjects.length > 0) return repoProjects;
             }
         }
 
@@ -226,14 +232,12 @@ class GitHubAPI {
                 }
             }
         `;
-        try {
-            const data = await this.graphql(viewerQuery);
-            const projects = data?.viewer?.projectsV2?.nodes || [];
-            return projects.filter(p => p && p.id && p.title);
-        } catch (error) {
-            console.warn('Failed to fetch viewer ProjectsV2:', error.message);
-            return [];
+        const viewerData = await this.graphql(viewerQuery);
+        if (viewerData?.viewer?.projectsV2?.nodes) {
+            return viewerData.viewer.projectsV2.nodes.filter(p => p && p.id && p.title);
         }
+
+        return [];
     }
 
     /**
@@ -968,15 +972,25 @@ class GitHubBoards {
         try {
             const collaborators = await this.api.getRepoCollaborators(repo.owner.login, repo.name);
             let importedCount = 0;
+            let skippedCount = 0;
 
             for (const collab of collaborators) {
-                // Check if user already exists
-                const existingUser = window.userManager?.getUserByEmail(collab.email);
-                if (existingUser) continue;
+                // Check if user already exists by email
+                let existingUser = window.userManager?.getUserByEmail(collab.email);
+
+                // Also check by GitHub username if not found by email
+                if (!existingUser && window.userManager?.users) {
+                    existingUser = window.userManager.users.find(u => u.githubUsername === collab.login);
+                }
+
+                if (existingUser) {
+                    skippedCount++;
+                    continue;
+                }
 
                 // Create user from collaborator
                 window.userManager?.createUser({
-                    name: collab.login,
+                    name: collab.name || collab.login,
                     email: collab.email || `${collab.login}@users.noreply.github.com`,
                     role: 'developer',
                     githubUsername: collab.login,
@@ -985,8 +999,19 @@ class GitHubBoards {
                 importedCount++;
             }
 
-            this.showNotification(`Imported ${importedCount} collaborators as users`, 'success');
-            return { success: true, count: importedCount };
+            // Provide feedback based on results
+            if (importedCount === 0 && skippedCount > 0) {
+                this.showNotification(`All ${skippedCount} collaborator(s) already imported`, 'info');
+            } else if (importedCount === 0) {
+                this.showNotification('No collaborators found to import', 'info');
+            } else {
+                let message = `Imported ${importedCount} collaborator(s) as users`;
+                if (skippedCount > 0) {
+                    message += ` (${skippedCount} already existed)`;
+                }
+                this.showNotification(message, 'success');
+            }
+            return { success: true, count: importedCount, skipped: skippedCount };
         } catch (error) {
             this.showNotification('Failed to import collaborators: ' + error.message, 'error');
             throw error;

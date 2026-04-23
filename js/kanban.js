@@ -64,11 +64,57 @@ class KanbanBoard {
     }
 
     init() {
+        // Migrate any corrupted milestone data
+        this.migrateTaskData();
         this.loadTasks();
         this.renderBoard();
         this.setupEventListeners();
         this.setupEmailModalListeners();
         this.setupMessagesSidebarListeners();
+    }
+
+    // Migrate task data to fix any corruption
+    migrateTaskData() {
+        try {
+            const saved = localStorage.getItem('kanban-tasks');
+            if (!saved) return;
+            const tasks = JSON.parse(saved);
+            let changed = false;
+            tasks.forEach(task => {
+                // Fix corrupted milestone data
+                if (task.milestone && typeof task.milestone === 'object') {
+                    // Check if it's a valid milestone object
+                    if (!task.milestone.name && !task.milestone.title) {
+                        // Try to extract from string representation
+                        const str = String(task.milestone);
+                        if (str.includes('[object Object]')) {
+                            task.milestone = null;
+                            changed = true;
+                        }
+                    }
+                }
+            });
+            if (changed) {
+                localStorage.setItem('kanban-tasks', JSON.stringify(tasks));
+                console.log('Migrated task data: fixed corrupted milestone');
+            }
+        } catch (e) {
+            console.warn('Failed to migrate task data:', e);
+        }
+    }
+
+    // Safely get milestone display name
+    getMilestoneDisplayName(milestone) {
+        if (!milestone) return '';
+        if (typeof milestone === 'string') {
+            // If it's "[object Object]", return empty string
+            if (milestone === '[object Object]') return '';
+            return milestone;
+        }
+        if (typeof milestone === 'object') {
+            return milestone.name || milestone.title || '';
+        }
+        return String(milestone);
     }
 
     // Task Management
@@ -200,8 +246,9 @@ class KanbanBoard {
 
         // Determine milestone class for styling
         let milestoneClass = 'task-milestone-badge';
-        if (task.milestone && task.milestone.name) {
-            const msName = task.milestone.name.toLowerCase().replace(/\s+/g, '-');
+        const milestoneName = this.getMilestoneDisplayName(task.milestone);
+        if (milestoneName) {
+            const msName = milestoneName.toLowerCase().replace(/\s+/g, '-');
             milestoneClass += ` milestone-${msName}`;
         }
 
@@ -254,7 +301,7 @@ class KanbanBoard {
             </div>
             <div class="task-card-footer">
                 ${dueDate ? `<div class="task-due-date ${dueDateClass}">Due: ${dueDate}</div>` : ''}
-                ${task.milestone && task.milestone.name ? `<div class="${milestoneClass}">${this.escapeHtml(task.milestone.name)}</div>` : ''}
+                ${milestoneName ? `<div class="${milestoneClass}">${this.escapeHtml(milestoneName)}</div>` : ''}
                 ${labelsHTML}
                 <div class="task-created-date">Created: ${createdDate}</div>
                 <div class="task-actions">
@@ -652,8 +699,8 @@ class KanbanBoard {
 
         // Set milestone after populating dropdown — match by number
         if (task && milestoneSelect && task.milestone) {
-            const num = task.milestone.number;
-            const title = task.milestone.name || task.milestone.title || task.milestone;
+            const num = task.milestone.number || null;
+            const title = this.getMilestoneDisplayName(task.milestone);
             // Try matching by number first, then by title text
             const byNum = num ? [...milestoneSelect.options].find(o => String(o.dataset.number) === String(num)) : null;
             const byTitle = title ? [...milestoneSelect.options].find(o => o.dataset.title === title || o.textContent === title) : null;
@@ -1550,11 +1597,26 @@ class KanbanBoard {
             }
 
             milestones.forEach(ms => {
+                // Defensive: ensure ms is an object with expected properties
+                if (typeof ms !== 'object' || ms === null) {
+                    console.warn('Invalid milestone data:', ms);
+                    return; // skip this entry
+                }
+                
+                const title = ms.title || ms.name || String(ms);
+                const number = ms.number || ms.id || 0;
+                
+                // Skip if title is still an object (shouldn't happen after String() above)
+                if (typeof title === 'object') {
+                    console.warn('Milestone title is still an object:', ms);
+                    return;
+                }
+                
                 const option = document.createElement('option');
-                option.value = ms.number;           // store numeric ID as value
-                option.textContent = ms.title;
-                option.dataset.title  = ms.title;
-                option.dataset.number = ms.number;
+                option.value = number;           // store numeric ID as value
+                option.textContent = title;
+                option.dataset.title  = title;
+                option.dataset.number = number;
                 select.appendChild(option);
             });
 
