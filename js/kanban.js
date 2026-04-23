@@ -1567,6 +1567,12 @@ class KanbanBoard {
             console.warn('Failed to load milestones:', error);
             // Still allow manual entry
             input.title = 'Failed to load — you can still type a milestone';
+            // Show error in UI if possible
+            const milestoneError = document.getElementById('milestone-error');
+            if (milestoneError) {
+                milestoneError.textContent = `Failed to load milestones: ${error.message}`;
+                milestoneError.style.display = 'block';
+            }
         }
     }
 
@@ -1621,6 +1627,12 @@ class KanbanBoard {
             console.warn('Failed to load projects:', error);
             select.disabled = true;
             select.title = 'Failed to load projects';
+            // Show error in UI if possible
+            const projectError = document.getElementById('project-error');
+            if (projectError) {
+                projectError.textContent = `Failed to load projects: ${error.message}`;
+                projectError.style.display = 'block';
+            }
         }
     }
 

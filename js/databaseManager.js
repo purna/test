@@ -87,10 +87,11 @@ class DatabaseManager {
     }
 
     async saveTaskAsIssue(task, repo) {
-        const githubBoards = window.githubBoardsUI?.githubBoards;
-        if (!githubBoards?.isAuthenticated()) {
+        // Check if GitHub is connected using the DatabaseManager's method
+        if (!this.isGitHubConnected()) {
             throw new Error('GitHub API not authenticated. Please reconnect.');
         }
+        const githubBoards = window.githubBoardsUI?.githubBoards;
         const { api } = githubBoards;
 
         // Build comprehensive metadata for full task restoration

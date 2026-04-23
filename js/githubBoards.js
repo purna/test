@@ -66,7 +66,7 @@ class GitHubAPI {
      */
     async request(endpoint, options = {}) {
         if (!this.accessToken) {
-            throw new Error('Not authenticated with GitHub');
+            throw new Error('Not authenticated with GitHub. Please configure your GitHub Personal Access Token in js/config.js or via the GitHub modal.');
         }
 
         const url = endpoint.startsWith('http') ? endpoint : `${this.BASE_URL}${endpoint}`;
@@ -85,7 +85,11 @@ class GitHubAPI {
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({}));
-            throw new Error(error.message || `GitHub API error: ${response.status}`);
+            let errorMessage = error.message || `GitHub API error: ${response.status}`;
+            if (response.status === 401 || response.status === 403) {
+                errorMessage += '. Check your GitHub token: ensure it is set in js/config.js, has not expired, and has the required scopes (repo for private repos).';
+            }
+            throw new Error(errorMessage);
         }
 
         return response.json();
@@ -100,6 +104,10 @@ class GitHubAPI {
         }
 
         try {
+            if (!this.accessToken) {
+                throw new Error('Not authenticated with GitHub. Please configure your GitHub Personal Access Token in js/config.js or via the GitHub modal.');
+            }
+
             const response = await fetch(this.GRAPHQL_URL, {
                 method: 'POST',
                 headers: {
@@ -111,7 +119,11 @@ class GitHubAPI {
 
             if (!response.ok) {
                 const text = await response.text();
-                throw new Error(`GitHub API error ${response.status}: ${text.slice(0, 200)}`);
+                let errorMessage = `GitHub API error ${response.status}: ${text.slice(0, 200)}`;
+                if (response.status === 401 || response.status === 403) {
+                    errorMessage += '. Check your GitHub token: ensure it is set in js/config.js, has not expired, and has the required scopes.';
+                }
+                throw new Error(errorMessage);
             }
 
             const result = await response.json();
@@ -322,13 +334,35 @@ class GitHubAPI {
     /**
      * Create a label
      */
-    async createLabel(owner, repo, name, color = 'ffffff') {
+    async createLabel(owner, repo, name, color = 'ffffff', description = '') {
         const label = await this.request(`/repos/${owner}/${repo}/labels`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, color })
+            body: JSON.stringify({ name, color, description })
         });
         return label;
+    }
+
+    /**
+     * Update a label
+     */
+    async updateLabel(owner, repo, currentName, updates) {
+        // updates can include: name, color, description
+        const label = await this.request(`/repos/${owner}/${repo}/labels/${currentName}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        return label;
+    }
+
+    /**
+     * Delete a label
+     */
+    async deleteLabel(owner, repo, name) {
+        await this.request(`/repos/${owner}/${repo}/labels/${name}`, {
+            method: 'DELETE'
+        });
     }
 
     /**

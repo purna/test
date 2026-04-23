@@ -1838,11 +1838,26 @@ header {
         display: none !important;
     }
 
+    /* Ensure icons are always visible in header buttons */
+    .header-controls .btn i,
+    .header-controls .btn .fa,
+    .header-controls .btn .fas,
+    .header-controls .btn .fab,
+    .header-controls .btn .far {
+        display: inline-block !important;
+        color: var(--text-primary) !important;
+        font-size: 1.2em !important;
+        margin: 0 !important;
+        min-width: 1em;
+        min-height: 1em;
+    }
+
     /* Ensure icon-only buttons have proper sizing */
     .header-controls .btn {
         padding: 8px 12px;
         justify-content: center;
         min-width: 44px;
+        min-height: 44px;
     }
 
     /* User display becomes compact */

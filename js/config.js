@@ -33,36 +33,45 @@
  */
 
 const githubConfig = {
-    /**
-     * Your GitHub Personal Access Token or OAuth token
-     * 
-     * How to get:
-     * - PAT: https://github.com/settings/tokens
-     * - OAuth: Create an OAuth App at https://github.com/settings/developers
-     * 
-     * For PAT, the token usually starts with 'ghp_'
-     * For OAuth, the token usually starts with 'gho_'
-     */
-    accessToken: '',
-    
-    /**
-     * Authentication method
-     * Options: 'pat' (Personal Access Token) or 'oauth' (OAuth Token)
-     */
-    tokenType: 'pat',
-    
-    /**
-     * Default repository owner/username for GitHub sync
-     * Leave empty to select at runtime
-     * Format: 'username' or 'org-name'
-     */
-    defaultOwner: '',
-    
-    /**
-     * Default repository name for GitHub sync
-     * Leave empty to select at runtime
-     */
-    defaultRepo: '',
+     /**
+      * Your GitHub Personal Access Token or OAuth token
+      * 
+      * How to get:
+      * - PAT: https://github.com/settings/tokens
+      * - OAuth: Create an OAuth App at https://github.com/settings/developers
+      * 
+      * For PAT, the token usually starts with 'ghp_'
+      * For OAuth, the token usually starts with 'gho_'
+      * 
+      * NOTE: For this app, we recommend using a classic PAT with the following scopes:
+      *   repo (full control of private repositories)
+      *   read:user (read user profile data)
+      *   read:org (read org and team membership)
+      * 
+      * If you want to use a fine-grained token, you need to grant it the necessary permissions
+      * for the repositories you want to access (e.g., Contents: read/write, Issues: read/write,
+      * Members: read, Metadata: read).
+      */
+     accessToken: '',  // Configure your token here or via the GitHub modal
+     
+     /**
+      * Authentication method
+      * Options: 'pat' (Personal Access Token) or 'oauth' (OAuth Token)
+      */
+     tokenType: 'pat',
+     
+     /**
+      * Default repository owner/username for GitHub sync
+      * Leave empty to select at runtime
+      * Format: 'username' or 'org-name'
+      */
+     defaultOwner: '',  // e.g., 'your-username' or 'your-org'
+     
+     /**
+      * Default repository name for GitHub sync
+      * Leave empty to select at runtime
+      */
+     defaultRepo: '',   // e.g., 'your-repository'
     
     /**
      * Auto-sync settings
