@@ -159,6 +159,18 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="task-project">Project</label>
+                        <select id="task-project">
+                            <option value="">No Project</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="task-parent-issue">Parent Issue # (optional)</label>
+                        <input type="number" id="task-parent-issue" min="1" placeholder="Enter parent issue number">
+                    </div>
+
+                    <div class="form-group">
                         <label for="task-labels">Labels</label>
                         <select id="task-labels" multiple style="height: 120px;">
                             <option value="">Select labels...</option>
@@ -339,21 +351,9 @@
                 <div id="google-sheets-auth" class="google-sheets-auth">
                     <div id="google-signin-status" class="google-signin-status">
                         <p id="google-auth-message">Sign in with Google to save and load boards</p>
-                        <div id="g_id_onload"
-                            data-client_id="YOUR_CLIENT_ID.apps.googleusercontent.com"
-                            data-context="signin"
-                            data-ux_mode="popup"
-                            data-callback="handleGoogleSignIn"
-                            data-auto_prompt="false">
-                        </div>
-                        <div class="g_id_signin"
-                            data-type="standard"
-                            data-size="large"
-                            data-theme="outline"
-                            data-text="signin_with"
-                            data-shape="rectangular"
-                            data-logo_alignment="left">
-                        </div>
+                        <!-- GSIOndemand will be injected here when configured -->
+                        <div id="g_id_onload" style="display:none;"></div>
+                        <!-- GSI sign-in button will be injected here when configured -->
                     </div>
                 </div>
 
@@ -617,8 +617,7 @@
     <!-- SCRIPTS -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-    <!-- Google Identity Services -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Google APIs (for Google Sheets only, not Google Sign-In) -->
     <script src="https://apis.google.com/js/api.js" async defer></script>
     <script src="js/config.js"></script>
     <script src="js/firebaseConfig.js"></script>

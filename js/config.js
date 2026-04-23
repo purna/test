@@ -232,7 +232,7 @@ const googleSheetsConfig = {
  * 5. Enable Google sign-in in Authentication > Sign-in method
  */
 
-const firebaseConfig = {
+const appFirebaseConfig = {
     /**
      * Firebase API Key
      * Get from: Project Settings > General > Your apps > Web app
@@ -477,8 +477,8 @@ function getConfigSummary() {
         },
         firebase: {
             configured: isFirebaseConfigured(),
-            hasApiKey: !!firebaseConfig.apiKey,
-            projectId: firebaseConfig.projectId || null
+            hasApiKey: !!appFirebaseConfig.apiKey,
+            projectId: appFirebaseConfig.projectId || null
         }
     };
 }

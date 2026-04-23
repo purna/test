@@ -11,7 +11,38 @@ class KanbanBoard {
             count: 4,
             names: ['Backlog', 'To Do', 'In Progress', 'Done']
         };
+        // Cache for GitHub label colors: { labelName: 'hexcolor' }
+        this.labelColorMap = {};
         this.init();
+    }
+
+    /**
+     * Get a color for a label - accepts string label name or object {name, color}
+     * Prefers GitHub label color if cached or provided, otherwise generates a consistent color
+     */
+    getLabelColor(label) {
+        // If label is an object with color property, use it
+        if (typeof label === 'object' && label && label.color) {
+            return '#' + label.color;
+        }
+
+        // If label is a string, check cache first
+        const labelName = typeof label === 'string' ? label : (label?.name || '');
+        if (this.labelColorMap && this.labelColorMap[labelName]) {
+            return '#' + this.labelColorMap[labelName];
+        }
+
+        // Fallback: generate consistent color from name
+        let hash = 0;
+        for (let i = 0; i < labelName.length; i++) {
+            hash = labelName.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        const h = Math.abs(hash % 360);
+        const s = 60 + (Math.abs(hash) % 20);
+        const l = 40 + (Math.abs(hash) % 20);
+
+        return this.hslToHex(h, s, l);
     }
 
     init() {
@@ -35,6 +66,8 @@ class KanbanBoard {
             status: data.status || 'backlog',
             dueDate: data.dueDate || '',
             milestone: data.milestone || null, // { name: string, number: number } or null
+            project: data.project || null,   // { id: string, title: string } or null
+            parentIssueId: data.parentIssueId || null,
             labels: data.labels || [], // Array of label names
             backgroundColor: data.backgroundColor || '#2d2d2d',
             attachments: data.attachments || [], // Array of {type, url, name}
@@ -159,9 +192,10 @@ class KanbanBoard {
         if (task.labels && task.labels.length > 0) {
             labelsHTML = '<div class="task-labels">';
             task.labels.forEach(label => {
+                const labelName = typeof label === 'object' ? label.name : label;
                 const bgColor = this.getLabelColor(label);
                 const textColor = this.getLabelTextColor(bgColor);
-                labelsHTML += `<span class="task-label-badge" style="background-color: ${bgColor}; color: ${textColor}">${this.escapeHtml(label)}</span>`;
+                labelsHTML += `<span class="task-label-badge" style="background-color: ${bgColor}; color: ${textColor}">${this.escapeHtml(labelName)}</span>`;
             });
             labelsHTML += '</div>';
         }
@@ -603,6 +637,7 @@ class KanbanBoard {
         this.populateAssigneeDropdown();
         await this.populateMilestoneDropdown();
         await this.populateLabelsDropdown();
+        await this.populateProjectDropdown();
 
         // Set milestone after populating dropdown
         if (task && milestoneSelect) {
@@ -611,10 +646,31 @@ class KanbanBoard {
             milestoneSelect.value = '';
         }
 
+        // Set project after populating dropdown
+        const projectSelect = document.getElementById('task-project');
+        if (task && projectSelect) {
+            if (task.project && task.project.id) {
+                projectSelect.value = task.project.id;
+            } else if (task.projectId) {
+                projectSelect.value = task.projectId;
+            }
+        } else if (projectSelect) {
+            projectSelect.value = '';
+        }
+
+        // Set parent issue field
+        const parentIssueInput = document.getElementById('task-parent-issue');
+        if (task && parentIssueInput) {
+            parentIssueInput.value = task.parentIssueId || '';
+        } else if (parentIssueInput) {
+            parentIssueInput.value = '';
+        }
+
         // Set labels after populating dropdown
         const labelsSelect = document.getElementById('task-labels');
         if (labelsSelect && task && task.labels) {
-            task.labels.forEach(labelName => {
+            task.labels.forEach(label => {
+                const labelName = typeof label === 'object' ? label.name : label;
                 const option = labelsSelect.querySelector(`option[value="${labelName}"]`);
                 if (option) option.selected = true;
             });
@@ -1351,6 +1407,24 @@ class KanbanBoard {
                 number: parseInt(selectedOption.dataset.number) || null
             };
         }
+
+        // Get project value
+        const projectSelect = document.getElementById('task-project');
+        let project = null;
+        if (projectSelect && projectSelect.value) {
+            project = {
+                id: projectSelect.value,
+                title: projectSelect.selectedOptions[0].textContent
+            };
+        }
+
+        // Get parent issue value
+        const parentIssueInput = document.getElementById('task-parent-issue');
+        let parentIssueId = null;
+        if (parentIssueInput && parentIssueInput.value) {
+            const parsed = parseInt(parentIssueInput.value);
+            if (!isNaN(parsed)) parentIssueId = parsed;
+        }
         
         // Get form values directly
         const taskData = {
@@ -1361,6 +1435,8 @@ class KanbanBoard {
             priority: document.getElementById('task-priority').value,
             dueDate: document.getElementById('task-due-date').value,
             milestone: milestone,
+            project: project,
+            parentIssueId: parentIssueId,
             backgroundColor: document.getElementById('task-bg-color').value,
             attachments: this.currentAttachments || [],
             labels: this.getSelectedLabels()
@@ -1474,6 +1550,60 @@ class KanbanBoard {
         }
     }
 
+    // GitHub Projects Integration
+    async populateProjectDropdown() {
+        const select = document.getElementById('task-project');
+        if (!select) return;
+
+        const currentValue = select.value;
+
+        // Clear existing options except the first one
+        select.innerHTML = '<option value="">No Project</option>';
+
+        // Disable if GitHub integration not active
+        if (!window.githubBoardsUI || !window.githubBoardsUI.githubBoards.isConnected()) {
+            select.disabled = true;
+            select.title = 'Connect to GitHub to use projects';
+            return;
+        }
+
+        const repo = window.githubBoardsUI.githubBoards.getSelectedRepo();
+        if (!repo) {
+            select.disabled = true;
+            select.title = 'Select a repository to use projects';
+            return;
+        }
+
+        select.disabled = false;
+        select.title = '';
+
+        try {
+            const projects = await window.githubBoardsUI.githubBoards.api.getProjects();
+            if (!projects || projects.length === 0) {
+                select.disabled = true;
+                select.title = 'No projects found in this repository';
+                return;
+            }
+
+            projects.forEach(proj => {
+                const option = document.createElement('option');
+                option.value = proj.id;
+                option.textContent = proj.title;
+                // Store number if available (for classic projects)
+                option.dataset.number = proj.number || '';
+                select.appendChild(option);
+            });
+
+            // Restore selection if editing
+            select.value = currentValue;
+
+        } catch (error) {
+            console.warn('Failed to load projects:', error);
+            select.disabled = true;
+            select.title = 'Failed to load projects';
+        }
+    }
+
     // GitHub Labels Integration
     async populateLabelsDropdown() {
         const select = document.getElementById('task-labels');
@@ -1506,6 +1636,15 @@ class KanbanBoard {
                 repo.owner.login,
                 repo.name
             );
+
+            // Sort labels alphabetically for better UX
+            labels.sort((a, b) => a.name.localeCompare(b.name));
+
+            // Update labelColorMap cache with GitHub label colors
+            this.labelColorMap = this.labelColorMap || {};
+            labels.forEach(label => {
+                this.labelColorMap[label.name] = label.color;
+            });
 
             labels.forEach(label => {
                 const option = document.createElement('option');

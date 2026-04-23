@@ -474,6 +474,8 @@ class GitHubBoards {
     selectRepo(repo) {
         this.api.selectedRepo = repo;
         localStorage.setItem('github_selected_repo', JSON.stringify(repo));
+        // Notify other components
+        window.dispatchEvent(new CustomEvent('github-repo-selected', { detail: { repo } }));
     }
 
     /**
@@ -561,7 +563,7 @@ class GitHubBoards {
                 const existingIssue = existingIssues.find(i => i.title === task.title);
 
                 // Combine task labels with status label (deduplicated)
-                const taskLabels = task.labels || [];
+                const taskLabels = (task.labels || []).map(l => typeof l === 'object' ? l.name : l);
                 const allLabels = [...new Set([statusLabel, ...taskLabels])];
 
                 // Ensure all labels exist on GitHub (create missing ones)
@@ -677,8 +679,11 @@ class GitHubBoards {
                     };
                 }
 
-                // Store all labels from the issue
-                const labels = issue.labels.map(l => l.name);
+                // Store all labels from the issue as objects with name and color
+                const labels = issue.labels.map(l => ({
+                    name: l.name,
+                    color: l.color
+                }));
 
                 tasks.push({
                     id: nextTaskId++,
@@ -689,6 +694,8 @@ class GitHubBoards {
                     assignee: assignee,
                     dueDate: taskData.dueDate || '',
                     milestone: milestone,
+                    project: taskData.project || null,
+                    parentIssueId: taskData.parentIssueId || null,
                     labels: labels,
                     comments: taskData.comments || [],
                     attachments: taskData.attachments || [],
@@ -807,6 +814,15 @@ class GitHubBoards {
             body += `\n\n**Milestone:** ${task.milestone.name}`;
         }
         
+        if (task.project && task.project.title) {
+            body += `\n\n**Project:** ${task.project.title}`;
+        }
+        
+        // Mention parent issue if set to create a visible link in GitHub
+        if (task.parentIssueId) {
+            body += `\n\n**Parent Issue:** #${task.parentIssueId}`;
+        }
+        
         // Add metadata as JSON for parsing on pull
         const metadata = {
             _pixelKanban: true,
@@ -814,6 +830,8 @@ class GitHubBoards {
             dueDate: task.dueDate,
             milestone: task.milestone || null,
             labels: task.labels || [],
+            project: task.project || null,
+            parentIssueId: task.parentIssueId || null,
             description: task.description,
             comments: task.comments || [],
             attachments: task.attachments || []
@@ -1236,16 +1254,20 @@ class GitHubBoardsUI {
         if (status.connected) {
             loginForm.style.display = 'none';
             connectedView.style.display = 'block';
-            connectionStatus.textContent = `Connected as ${status.user.login}`;
-            
-            // Update user info
-            const avatar = document.getElementById('github-user-avatar');
-            const name = document.getElementById('github-user-name');
-            const login = document.getElementById('github-user-login');
-            
-            if (status.user.avatar_url) avatar.src = status.user.avatar_url;
-            name.textContent = status.user.name || status.user.login;
-            login.textContent = `@${status.user.login}`;
+            if (status.user) {
+                connectionStatus.textContent = `Connected as ${status.user.login}`;
+                
+                // Update user info
+                const avatar = document.getElementById('github-user-avatar');
+                const name = document.getElementById('github-user-name');
+                const login = document.getElementById('github-user-login');
+                
+                if (status.user.avatar_url) avatar.src = status.user.avatar_url;
+                name.textContent = status.user.name || status.user.login;
+                login.textContent = `@${status.user.login}`;
+            } else {
+                connectionStatus.textContent = 'Connected';
+            }
             
             // Load repositories if not loaded
             this.loadRepositories();
@@ -1258,6 +1280,44 @@ class GitHubBoardsUI {
         this.updateSyncStatus();
     }
 
+    /**
+     * Guess the current site's repository based on the URL.
+     * Works for GitHub Pages deployments (user or project sites).
+     */
+    guessCurrentSiteRepo() {
+        try {
+            const hostname = window.location.hostname;
+            // Only attempt on GitHub Pages domains
+            if (!hostname.includes('github.io')) {
+                return null;
+            }
+            
+            // Extract owner from hostname: e.g., 'username' from 'username.github.io'
+            const hostParts = hostname.split('.');
+            const owner = hostParts[0]; // 'username'
+            
+            // Determine repo from path
+            const pathParts = window.location.pathname.split('/').filter(Boolean);
+            let repo;
+            if (pathParts.length > 0) {
+                // Project site: https://username.github.io/repo/
+                repo = pathParts[0];
+            } else {
+                // User site: https://username.github.io/ -> repo is username.github.io
+                repo = `${owner}.github.io`;
+            }
+            
+            return {
+                owner: { login: owner },
+                name: repo,
+                fullName: `${owner}/${repo}`
+            };
+        } catch (e) {
+            console.warn('Failed to guess current site repo:', e);
+            return null;
+        }
+    }
+
     async loadRepositories() {
         const repoSelect = document.getElementById('github-repo-select');
         if (!repoSelect) return;
@@ -1268,6 +1328,7 @@ class GitHubBoardsUI {
             repoSelect.innerHTML = '<option value="">Select a repository...</option>';
             
             const savedRepo = this.githubBoards.getSelectedRepo();
+            let selected = false;
             
             repos.forEach(repo => {
                 const option = document.createElement('option');
@@ -1280,11 +1341,40 @@ class GitHubBoardsUI {
                 
                 if (savedRepo && savedRepo.fullName === repo.full_name) {
                     option.selected = true;
+                    selected = true;
                     this.enableSyncButtons();
                 }
                 
                 repoSelect.appendChild(option);
             });
+            
+            // If no repo selected yet, try to auto-detect based on current site URL
+            if (!selected && !savedRepo) {
+                const guessed = this.guessCurrentSiteRepo();
+                if (guessed) {
+                    // Find matching repo in the list
+                    const match = repos.find(r => 
+                        r.owner.login === guessed.owner.login && r.name === guessed.name
+                    );
+                    if (match) {
+                        // Select this repo
+                        this.githubBoards.selectRepo({
+                            owner: { login: match.owner.login },
+                            name: match.name,
+                            fullName: match.full_name
+                        });
+                        // Update select UI
+                        repoSelect.value = JSON.stringify({
+                            owner: { login: match.owner.login },
+                            name: match.name,
+                            fullName: match.full_name
+                        });
+                        selected = true;
+                        this.enableSyncButtons();
+                        console.log(`Auto-selected repository: ${match.full_name} based on site URL`);
+                    }
+                }
+            }
             
         } catch (error) {
             this.showStatus('Failed to load repositories: ' + error.message, 'error');
