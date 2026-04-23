@@ -1,15 +1,10 @@
 # Drop this into .github/workflows/ of ANY repo.
-# It pulls pixelKanban from purna/pixelKanban and deploys
-# it wired to that repo's GitHub Issues.
+# Clones pixelKanban and deploys it to gh-pages, wired to this repo's issues.
 name: Deploy pixelKanban to GitHub Pages
 
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Deploy to branch'
-        required: false
-        default: 'gh-pages'
       message:
         description: 'Commit message'
         required: false
@@ -22,59 +17,26 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout target repo
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
       - name: Clone pixelKanban source
-        run: |
-          git clone https://github.com/purna/pixelKanban.git _kanban_src
+        run: git clone https://github.com/purna/pixelKanban.git site
 
       - name: Remove workflows from source
-        run: rm -rf _kanban_src/.github
+        run: rm -rf site/.github
 
       - name: Patch config to this repo's issues
         run: |
           OWNER=$(echo "${{ github.repository }}" | cut -d'/' -f1)
           REPO=$(echo "${{ github.repository }}" | cut -d'/' -f2)
-          sed -i "s/defaultOwner: '.*'/defaultOwner: '$OWNER'/" _kanban_src/js/config.js
-          sed -i "s/defaultRepo: '.*'/defaultRepo: '$REPO'/" _kanban_src/js/config.js
+          sed -i "s/defaultOwner: '.*'/defaultOwner: '$OWNER'/" site/js/config.js
+          sed -i "s/defaultRepo: '.*'/defaultRepo: '$REPO'/" site/js/config.js
 
-      - name: Move kanban files to temp location
-        run: |
-          mv _kanban_src /tmp/kanban_src
-          touch /tmp/kanban_src/.nojekyll
+      - name: List files to deploy
+        run: ls -la site/
 
-      - name: Switch to deploy branch
-        run: |
-          TB="${{ inputs.branch }}"
-          if git show-ref --verify --quiet "refs/heads/$TB"; then
-            git checkout "$TB"
-          else
-            git checkout -b "$TB"
-          fi
-          git rm -rf . 2>/dev/null || true
-          git clean -fdx
-
-      - name: Copy kanban files into branch
-        run: |
-          cp -r /tmp/kanban_src/. .
-
-      - name: Commit and push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          OWNER=$(echo "${{ github.repository }}" | cut -d'/' -f1)
-          REPO=$(echo "${{ github.repository }}" | cut -d'/' -f2)
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
-          git add -A
-          git commit -m "${{ inputs.message }}" --allow-empty
-          git push origin "${{ inputs.branch }}"
-          echo "Deployed to: https://$OWNER.github.io/$REPO/"
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
+          commit_message: ${{ inputs.message }}
