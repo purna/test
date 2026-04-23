@@ -1,0 +1,741 @@
+/* Modal.css - Kanban Modal Styles with pixelAFrame Dark Theme */
+
+/* ============================================= */
+/* 1. MODAL OVERLAY - Full screen backdrop */
+/* ============================================= */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 15, 27, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* User modal needs higher z-index to appear on top of settings modal */
+#user-modal.active {
+    z-index: 2000;
+}
+
+/* ============================================= */
+/* 2. MODAL STRUCTURE - Base modal container */
+/* ============================================= */
+.modal {
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    width: 480px;
+    max-width: 90%;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+/* ============================================= */
+/* 3. MODAL HEADER - Title and subtitle area */
+/* ============================================= */
+.modal header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-medium);
+}
+
+.modal-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-title i {
+    color: var(--accent-primary);
+    font-size: 1rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 4px;
+    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: var(--bg-light);
+    color: var(--accent-secondary);
+}
+
+/* ============================================= */
+/* 4. MODAL CONTENT - Scrollable content area */
+/* ============================================= */
+.modal-content {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+    border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+/* ============================================= */
+/* 5. MODAL FOOTER - Actions area */
+/* ============================================= */
+.modal footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: var(--bg-medium);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+}
+
+/* ============================================= */
+/* 6. FORM STYLES */
+/* ============================================= */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    transition: all 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(0, 255, 65, 0.1);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Form validation states */
+.form-group input:required:not(:placeholder-shown):invalid,
+.form-group textarea:required:not(:placeholder-shown):invalid {
+    border-color: var(--accent-secondary);
+}
+
+.form-group input:required:valid,
+.form-group textarea:required:valid {
+    border-color: var(--success-color);
+}
+
+/* ============================================= */
+/* 7. INLINE TASK CREATOR */
+/* ============================================= */
+.inline-task-creator {
+    background: var(--bg-medium);
+    border: 1px solid var(--accent-primary);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+    animation: fadeIn 0.2s ease;
+}
+
+.inline-creator-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.inline-title-input {
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.inline-title-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.inline-description-input {
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    resize: none;
+}
+
+.inline-description-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.inline-creator-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.inline-creator-actions .btn {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+}
+
+/* ============================================= */
+/* 8. COLUMN MAPPING */
+/* ============================================= */
+.column-mapping {
+    background: var(--bg-medium);
+    padding: 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.mapping-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.mapping-row:last-child {
+    margin-bottom: 0;
+}
+
+.mapping-row label {
+    min-width: 120px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.mapping-row input {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.mapping-row input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+/* ============================================= */
+/* 9. ANIMATIONS */
+/* ============================================= */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================= */
+/* 10. RESPONSIVE DESIGN */
+/* ============================================= */
+@media (max-width: 768px) {
+    .header-controls {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .kanban-board {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .main-container {
+        padding: 1rem;
+    }
+
+    .modal {
+        width: 95%;
+        margin: 1rem;
+    }
+
+    .modal footer {
+        flex-direction: column;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+    }
+
+    .modal-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ============================================= */
+/* 11. DRAG AND DROP VISUALS */
+/* ============================================= */
+.task-placeholder {
+    background: var(--bg-medium);
+    border: 2px dashed var(--accent-primary);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.column-content.drag-over {
+    background: rgba(0, 255, 65, 0.05);
+    border: 2px dashed var(--accent-primary);
+}
+
+/* ============================================= */
+/* 12. LOADING & EMPTY STATES */
+/* ============================================= */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.task-card.overdue .task-due-date {
+    color: var(--accent-secondary);
+    font-weight: 600;
+}
+
+.task-card.completed {
+    opacity: 0.7;
+    background: var(--bg-medium);
+}
+
+/* ============================================= */
+/* 13. SETTINGS MODAL */
+/* ============================================= */
+.settings-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+}
+
+.settings-tab {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.settings-tab:hover {
+    background: var(--bg-light);
+    color: var(--text-primary);
+}
+
+.settings-tab.active {
+    background: var(--accent-primary);
+    color: #000;
+    border-color: var(--accent-primary);
+}
+
+/* Active button states */
+.btn.active,
+#auto-save-btn.active {
+    background: var(--accent-primary) !important;
+    color: #000 !important;
+    border-color: var(--accent-primary) !important;
+}
+
+.settings-tab-content {
+    display: none;
+}
+
+.settings-tab-content.active {
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
+
+.settings-tab-content h4 {
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Saved Boards List */
+.saved-boards-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+
+.board-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.board-item:hover {
+    border-color: var(--accent-primary);
+}
+
+.board-name {
+    flex: 1;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.board-date {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.board-item-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.board-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.board-actions input {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+}
+
+.board-actions input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+/* Users List */
+.users-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.user-item:hover {
+    border-color: var(--accent-primary);
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.user-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.user-email {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.user-role {
+    font-size: 0.75rem;
+    color: var(--accent-tertiary);
+    text-transform: capitalize;
+}
+
+.user-item-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* Panel Names Config */
+.panel-names-config {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.panel-names-config input {
+    padding: 8px 12px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+}
+
+.panel-names-config input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+/* Empty Message */
+.empty-message {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    padding: 20px;
+    font-style: italic;
+}
+
+/* Small button */
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+}
+
+.btn-sm.delete:hover {
+    background: var(--accent-secondary);
+    border-color: var(--accent-secondary);
+    color: #fff;
+}
+
+/* Board Actions */
+.board-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.board-actions .btn {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.board-actions input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 12px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+}
+
+.board-actions input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+/* Board Item */
+.board-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+}
+
+.board-item:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-medium);
+}
+
+.board-item.current {
+    border-color: var(--accent-primary);
+    background: rgba(0, 255, 65, 0.1);
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.2);
+}
+
+.board-item.current .board-name {
+    color: var(--accent-primary);
+}
+
+.board-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.board-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.board-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.board-item-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* User Item */
+.user-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+}
+
+.user-item:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-medium);
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.user-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.user-email {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.user-role {
+    font-size: 0.75rem;
+    color: var(--accent-primary);
+    text-transform: capitalize;
+    font-weight: 500;
+}
+
+.user-item-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.user-item-actions .btn {
+    pointer-events: auto;
+    cursor: pointer;
+    min-width: 32px;
+    padding: 6px 10px;
+}
+
+.user-item-actions .btn:hover {
+    background: var(--accent-primary);
+    color: #000;
+    border-color: var(--accent-primary);
+}
+
+.user-item-actions .btn.delete:hover {
+    background: var(--accent-secondary);
+    color: #fff;
+    border-color: var(--accent-secondary);
+}
+
+/* Saved button state */
+.btn.saved {
+    background: var(--accent-primary) !important;
+    color: #000 !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* Auto-save button */
+#auto-save-btn.active {
+    background: var(--accent-primary);
+    color: #000;
+    border-color: var(--accent-primary);
+}

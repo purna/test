@@ -1,0 +1,240 @@
+/* --- TUTORIAL SYSTEM STYLES --- */
+/* This file contains all styling for the interactive tutorial system in Pixel Audio Studio */
+
+/* ============================================= */
+/* 1. TUTORIAL OVERLAY - Full screen overlay */
+/* ============================================= */
+#tutorial-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    display: none;
+    pointer-events: none;
+}
+
+/* ============================================= */
+/* 2. TUTORIAL CONTAINER - Main tutorial panel */
+/* ============================================= */
+#tutorial-container {
+    position: fixed;
+    z-index: 10001;
+    max-width: 300px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    color: var(--text-primary);
+    font-size: 13px;
+    display: none;
+    pointer-events: auto;
+}
+
+/* ============================================= */
+/* 3. TUTORIAL HEADER - Title and close button area */
+/* ============================================= */
+#tutorial-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#tutorial-heading {
+    font-size: 14px;
+    color: var(--accent-primary);
+    margin: 0;
+    font-weight: bold;
+}
+
+#tutorial-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+#tutorial-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+/* ============================================= */
+/* 4. TUTORIAL CONTENT - Main content area */
+/* ============================================= */
+#tutorial-content {
+    margin-bottom: 16px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+/* ============================================= */
+/* 5. TUTORIAL CONTROLS - Button and navigation area */
+/* ============================================= */
+#tutorial-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* ============================================= */
+/* 6. TUTORIAL BUTTONS - Action buttons */
+/* ============================================= */
+.tutorial-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-medium);
+    color: var(--text-primary);
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: bold;
+}
+
+.tutorial-btn:hover {
+    background: var(--bg-light);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.tutorial-btn.secondary {
+    border-style: dashed;
+    opacity: 0.8;
+}
+
+.tutorial-btn.secondary:hover {
+    opacity: 1;
+    border-color: var(--accent-tertiary);
+    color: var(--accent-tertiary);
+}
+
+/* ============================================= */
+/* 7. TUTORIAL BUTTONS CONTAINER */
+/* ============================================= */
+#tutorial-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* ============================================= */
+/* 8. TUTORIAL PROGRESS DOTS - Step indicators */
+/* ============================================= */
+#tutorial-progress-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.tutorial-progress-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-color);
+    transition: all 0.3s;
+}
+
+.tutorial-progress-dot.active {
+    background: var(--accent-primary);
+    transform: scale(1.2);
+}
+
+/* ============================================= */
+/* 9. TUTORIAL DIRECTIONAL ARROWS - Visual indicators */
+/* ============================================= */
+.tutorial-arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    z-index: 10002;
+}
+
+/* ============================================= */
+/* 10. ARROW POSITIONS - Directional arrow styles */
+/* ============================================= */
+
+/* If tutorial is BELOW target (position: 'bottom'), arrow should be on TOP, pointing UP. */
+.tutorial-arrow.bottom {
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 8px 8px 0px 8px;
+    border-color: var(--accent-primary) transparent transparent transparent;
+}
+
+/* If tutorial is ABOVE target (position: 'top'), arrow should be on BOTTOM, pointing DOWN. */
+.tutorial-arrow.top {
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0px 8px 8px 8px;
+    border-color: transparent transparent var(--accent-primary) transparent;
+}
+
+/* For a tutorial placed to the LEFT of the target (position: 'left'), the arrow should be on the LEFT side of the panel, pointing LEFT. */
+.tutorial-arrow.left {
+    top: 50%;
+    left: -8px;
+    transform: translateY(-50%);
+    border-width: 8px 8px 8px 0px;
+    border-color: transparent var(--accent-primary) transparent transparent;
+}
+
+/* For a tutorial placed to the RIGHT of the target (position: 'right'), the arrow should be on the RIGHT side of the panel, pointing RIGHT. */
+.tutorial-arrow.right {
+    top: 50%;
+    right: -8px;
+    transform: translateY(-50%);
+    border-width: 8px 0px 8px 8px;
+    border-color: transparent transparent transparent var(--accent-primary);
+}
+
+/* ============================================= */
+/* 11. ARROW POSITION OVERRIDES - Precise placement along sides */
+/* ============================================= */
+.tutorial-arrow.top-third {
+    top: 33.33% !important;
+}
+
+.tutorial-arrow.middle-third {
+    top: 50% !important;
+}
+
+.tutorial-arrow.bottom-third {
+    top: 66.66% !important;
+}
+
+.tutorial-arrow.left-third {
+    left: 33.33% !important;
+}
+
+.tutorial-arrow.center-third {
+    left: 50% !important;
+}
+
+.tutorial-arrow.right-third {
+    left: 66.66% !important;
+}
