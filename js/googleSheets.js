@@ -13,10 +13,54 @@ class GoogleSheetsManager {
 
     init() {
         this.loadCredentials();
+        this.setupGoogleSignIn();
         this.setupEventListeners();
         this.checkAuthStatus();
         // Listen for custom events from settings manager
         window.addEventListener('open-google-sheets', () => this.openModal());
+    }
+
+    setupGoogleSignIn() {
+        // Configure Google Identity Services button with actual client ID
+        const gIdOnload = document.getElementById('g_id_onload');
+        const gSignInBtn = document.querySelector('.g_id_signin');
+        const googleAuthMessage = document.getElementById('google-auth-message');
+        
+        // Check if client ID is configured (not placeholder)
+        const isConfigured = this.clientId && 
+            this.clientId !== 'YOUR_CLIENT_ID.apps.googleusercontent.com' &&
+            !this.clientId.includes('YOUR_');
+        
+        if (isConfigured) {
+            if (gIdOnload) {
+                gIdOnload.setAttribute('data-client_id', this.clientId);
+            }
+            if (gSignInBtn) {
+                gSignInBtn.setAttribute('data-client_id', this.clientId);
+            }
+        } else {
+            // Clear placeholder to prevent GSI errors
+            if (gIdOnload) {
+                gIdOnload.removeAttribute('data-client_id');
+                gIdOnload.setAttribute('data-client_id', '');
+            }
+            if (gSignInBtn) {
+                gSignInBtn.removeAttribute('data-client_id');
+                gSignInBtn.setAttribute('data-client_id', '');
+            }
+            // Hide the broken Google button and show config message
+            if (gIdOnload) gIdOnload.parentElement.style.display = 'none';
+            if (gSignInBtn) gSignInBtn.style.display = 'none';
+            if (googleAuthMessage) {
+                googleAuthMessage.innerHTML = `
+                    <p style="color: var(--error-color);">
+                        Google Sign-in not configured.<br>
+                        Add your Google OAuth Client ID to js/config.js:<br>
+                        <code style="font-size: 0.9em;">googleSheetsConfig.clientId = 'your-client-id.apps.googleusercontent.com'</code>
+                    </p>
+                `;
+            }
+        }
     }
 
     loadCredentials() {

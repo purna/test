@@ -56,13 +56,13 @@ const githubConfig = {
      * Leave empty to select at runtime
      * Format: 'username' or 'org-name'
      */
-    defaultOwner: 'purna',
+    defaultOwner: '',
     
     /**
      * Default repository name for GitHub sync
      * Leave empty to select at runtime
      */
-    defaultRepo: 'test',
+    defaultRepo: '',
     
     /**
      * Auto-sync settings
@@ -413,10 +413,11 @@ function isGoogleSheetsConfigured() {
 }
 
 /**
- * Check if Firebase is configured
+ * Check if Firebase is configured and initialized
  */
 function isFirebaseConfigured() {
-    return !!firebaseConfig.apiKey && firebaseConfig.apiKey !== '';
+    // Check if firebaseAuth is available and initialized (from firebaseConfig.js)
+    return typeof firebaseAuth !== 'undefined' && firebaseAuth !== null;
 }
 
 /**

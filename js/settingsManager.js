@@ -573,108 +573,32 @@ class SettingsManager {
 
     // Event Listeners
     setupEventListeners() {
-        // Settings modal
+        // Settings button in header - open settings modal
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => this.openSettings());
+        }
+
+        // Settings modal close buttons
         const settingsClose = document.getElementById('settings-modal-close');
         if (settingsClose) {
-            settingsClose.addEventListener('click', () => this.closeModal());
+            settingsClose.addEventListener('click', () => this.closeSettings());
         }
-        
+        const settingsCancel = document.getElementById('settings-cancel-btn');
+        if (settingsCancel) {
+            settingsCancel.addEventListener('click', () => this.closeSettings());
+        }
+        // Settings modal overlay
         const settingsModal = document.getElementById('settings-modal');
         if (settingsModal) {
             settingsModal.addEventListener('click', (e) => {
                 if (e.target.id === 'settings-modal') {
-                    this.closeModal();
-                }
-            });
-        }
-        
-        // Settings tabs
-        document.querySelectorAll('.settings-tab').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                const tabName = e.target.getAttribute('data-tab');
-                this.showTab(tabName);
-            });
-        });
-        
-        // Boards tab actions
-        document.getElementById('save-board-btn')?.addEventListener('click', () => this.saveCurrentBoard());
-        document.getElementById('auto-save-btn')?.addEventListener('click', () => this.toggleAutoSave());
-        document.getElementById('export-json-btn')?.addEventListener('click', () => this.exportBoard());
-        document.getElementById('import-json-btn')?.addEventListener('click', () => {
-            document.getElementById('import-json-input')?.click();
-        });
-        document.getElementById('import-json-input')?.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) {
-                this.importBoard(e.target.files[0]);
-            }
-        });
-        document.getElementById('create-board-btn')?.addEventListener('click', () => this.createNewBoard());
-        
-        // Users tab actions
-        document.getElementById('add-user-btn')?.addEventListener('click', () => this.openUserModal());
-        
-        // Roles tab actions
-        document.getElementById('add-role-btn')?.addEventListener('click', () => this.openRoleModal());
-        document.getElementById('edit-role-btn')?.addEventListener('click', () => this.editSelectedRole());
-        document.getElementById('delete-role-btn')?.addEventListener('click', () => this.deleteSelectedRole());
-        
-        // Panels tab actions
-        document.getElementById('save-panels-config')?.addEventListener('click', () => this.savePanelConfig());
-        document.getElementById('panel-count')?.addEventListener('change', () => this.updatePanelNamesUI());
-        
-        // Comments tab actions
-        document.getElementById('comments-user-select')?.addEventListener('change', () => this.loadUserComments());
-        
-        // Database actions (Google Sheets and Google Sign-in)
-        document.getElementById('google-sheets-btn')?.addEventListener('click', () => {
-            // Trigger Google Sheets modal
-            const sheetsEvent = new CustomEvent('open-google-sheets');
-            window.dispatchEvent(sheetsEvent);
-        });
-        document.getElementById('google-login-btn')?.addEventListener('click', () => {
-            // Trigger Google Sign-in
-            const loginEvent = new CustomEvent('trigger-google-signin');
-            window.dispatchEvent(loginEvent);
-        });
-        
-        // Close modals with escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeModal();
-                const userModal = document.getElementById('user-modal');
-                if (userModal && userModal.classList.contains('active')) {
-                    this.closeUserModal();
-                }
-                const roleModal = document.getElementById('role-modal');
-                if (roleModal && roleModal.classList.contains('active')) {
-                    this.closeRoleModal();
-                }
-            }
-        });
-    }
-
-        // Settings modal close
-        const settingsClose = document.getElementById('settings-modal-close');
-        if (settingsClose) {
-            settingsClose.onclick = () => this.closeSettings();
-        }
-
-        const settingsCancel = document.getElementById('settings-cancel-btn');
-        if (settingsCancel) {
-            settingsCancel.onclick = () => this.closeSettings();
-        }
-
-        // Close modal on overlay click
-        const settingsModal = document.getElementById('settings-modal');
-        if (settingsModal) {
-            settingsModal.onclick = (e) => {
-                if (e.target.id === 'settings-modal') {
                     this.closeSettings();
                 }
-            };
+            });
         }
 
-        // Tabs
+        // Settings tabs
         document.querySelectorAll('.settings-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
                 const tabName = e.target.dataset.tab;
@@ -682,140 +606,110 @@ class SettingsManager {
             });
         });
 
-        // Create board
-        const createBoardBtn = document.getElementById('create-board-btn');
-        if (createBoardBtn) {
-            createBoardBtn.onclick = () => {
-                const input = document.getElementById('new-board-name');
-                const boardName = input.value.trim();
-                if (boardName && this.boardManager) {
-                    // Save the current state to the new board
-                    this.boardManager.saveBoard(boardName);
-                    // Update current board name
-                    this.boardManager.currentBoardName = boardName;
-                    // Refresh the boards list
-                    this.renderBoardsList();
-                    // Show success
-                    this.showNotification(`Board "${boardName}" created and loaded`, 'success');
-                    input.value = '';
-                }
-            };
-        }
-
-        // Save board button with auto-save toggle
-        const saveBoardBtn = document.getElementById('save-board-btn');
-        if (saveBoardBtn) {
-            saveBoardBtn.onclick = () => {
-                if (this.boardManager) {
-                    const boardName = this.boardManager.currentBoardName || 'default';
-                    this.boardManager.saveBoard(boardName);
-                    this.showSaveComplete();
-                }
-            };
-        }
-
-        // Auto-save toggle
-        const autoSaveBtn = document.getElementById('auto-save-btn');
-        if (autoSaveBtn) {
-            autoSaveBtn.onclick = () => {
-                this.toggleAutoSave();
-            };
-        }
-
-        // Export JSON button
-        const exportJsonBtn = document.getElementById('export-json-btn');
-        if (exportJsonBtn) {
-            exportJsonBtn.onclick = () => {
-                if (this.boardManager) {
-                    this.boardManager.exportBoardJSON();
-                }
-            };
-        }
-
-        // Import JSON button
-        const importJsonBtn = document.getElementById('import-json-btn');
-        if (importJsonBtn) {
-            importJsonBtn.onclick = () => {
-                document.getElementById('import-json-input').click();
-            };
-        }
-
-        // Import JSON file input
-        const importJsonInput = document.getElementById('import-json-input');
-        if (importJsonInput) {
-            importJsonInput.onchange = (e) => {
-                if (e.target.files.length > 0 && this.boardManager) {
-                    this.boardManager.importBoardJSON(e.target.files[0]);
-                    e.target.value = '';
-                }
-            };
-        }
-
-        // Panel count change
-        const panelCountSelect = document.getElementById('panel-count');
-        if (panelCountSelect) {
-            panelCountSelect.onchange = (e) => {
-                this.panelConfig.count = parseInt(e.target.value);
-                this.renderPanelConfig();
-            };
-        }
-
-        // Save panel config
-        const savePanelsBtn = document.getElementById('save-panels-config');
-        if (savePanelsBtn) {
-            savePanelsBtn.onclick = () => {
-                const inputs = document.querySelectorAll('#panel-names-config input');
-                inputs.forEach((input, index) => {
-                    this.panelConfig.names[index] = input.value.trim() || `Column ${index + 1}`;
-                });
-                
-                // Save date format
-                const dateFormatSelect = document.getElementById('date-format');
-                if (dateFormatSelect) {
-                    this.dateFormat = dateFormatSelect.value;
-                }
-                
-                this.savePanelConfig();
-                this.showNotification('Panel configuration saved', 'success');
-            };
-        }
-
-        // Role modal close
-        const roleModalClose = document.getElementById('role-modal-close');
-        if (roleModalClose) {
-            roleModalClose.onclick = () => this.closeRoleModal();
-        }
-
-        const roleCancelBtn = document.getElementById('role-cancel-btn');
-        if (roleCancelBtn) {
-            roleCancelBtn.onclick = () => this.closeRoleModal();
-        }
-
-        const roleSaveBtn = document.getElementById('role-save-btn');
-        if (roleSaveBtn) {
-            roleSaveBtn.onclick = () => this.saveRole();
-        }
-
-        // Close role modal on overlay click
-        const roleModal = document.getElementById('role-modal');
-        if (roleModal) {
-            roleModal.addEventListener('click', (e) => {
-                if (e.target.id === 'role-modal') {
-                    this.closeRoleModal();
-                }
-            });
-        }
-
-        // Keyboard shortcuts for role modal
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeRoleModal();
+        // Boards tab actions - Create board
+        document.getElementById('create-board-btn')?.addEventListener('click', () => {
+            const input = document.getElementById('new-board-name');
+            const boardName = input.value.trim();
+            if (boardName && this.boardManager) {
+                this.boardManager.saveBoard(boardName);
+                this.boardManager.currentBoardName = boardName;
+                this.renderBoardsList();
+                this.showNotification(`Board "${boardName}" created and loaded`, 'success');
+                input.value = '';
             }
         });
 
-        // Initialize roles tab if selected
-        this.switchTab('users');
+        // Boards tab - Save board
+        document.getElementById('save-board-btn')?.addEventListener('click', () => {
+            if (this.boardManager) {
+                const boardName = this.boardManager.currentBoardName || 'default';
+                this.boardManager.saveBoard(boardName);
+                this.showSaveComplete();
+            }
+        });
+
+        // Auto-save toggle
+        document.getElementById('auto-save-btn')?.addEventListener('click', () => this.toggleAutoSave());
+
+        // Export JSON
+        document.getElementById('export-json-btn')?.addEventListener('click', () => {
+            if (this.boardManager) this.boardManager.exportBoardJSON();
+        });
+
+        // Import JSON button
+        document.getElementById('import-json-btn')?.addEventListener('click', () => {
+            document.getElementById('import-json-input')?.click();
+        });
+
+        // Import JSON file input
+        document.getElementById('import-json-input')?.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0] && this.boardManager) {
+                this.boardManager.importBoardJSON(e.target.files[0]);
+                e.target.value = '';
+            }
+        });
+
+        // Panels tab
+        document.getElementById('panel-count')?.addEventListener('change', () => {
+            this.panelConfig.count = parseInt(document.getElementById('panel-count').value);
+            this.renderPanelConfig();
+        });
+
+        document.getElementById('save-panels-config')?.addEventListener('click', () => {
+            const inputs = document.querySelectorAll('#panel-names-config input');
+            inputs.forEach((input, index) => {
+                this.panelConfig.names[index] = input.value.trim() || `Column ${index + 1}`;
+            });
+            const dateFormatSelect = document.getElementById('date-format');
+            if (dateFormatSelect) {
+                this.dateFormat = dateFormatSelect.value;
+            }
+            this.savePanelConfig();
+            this.showNotification('Panel configuration saved', 'success');
+        });
+
+        // Role modal events
+        const roleModalClose = document.getElementById('role-modal-close');
+        if (roleModalClose) {
+            roleModalClose.addEventListener('click', () => this.closeRoleModal());
+        }
+        const roleCancelBtn = document.getElementById('role-cancel-btn');
+        if (roleCancelBtn) {
+            roleCancelBtn.addEventListener('click', () => this.closeRoleModal());
+        }
+        const roleSaveBtn = document.getElementById('role-save-btn');
+        if (roleSaveBtn) {
+            roleSaveBtn.addEventListener('click', () => this.saveRole());
+        }
+        const roleModal = document.getElementById('role-modal');
+        if (roleModal) {
+            roleModal.addEventListener('click', (e) => {
+                if (e.target.id === 'role-modal') this.closeRoleModal();
+            });
+        }
+
+        // Escape for role modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const roleModal = document.getElementById('role-modal');
+                if (roleModal && roleModal.classList.contains('active')) {
+                    this.closeRoleModal();
+                }
+            }
+        });
+
+        // Escape for settings modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const settingsModal = document.getElementById('settings-modal');
+                if (settingsModal && settingsModal.classList.contains('active')) {
+                    this.closeSettings();
+                }
+            }
+        });
+
     }
+
 
     // Auto-save functionality
     startAutoSave() {

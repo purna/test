@@ -132,12 +132,22 @@ class GitHubAPI {
     }
 
     /**
-     * Get user's repositories
+     * Get user's repositories (accessible by authenticated user)
      */
     async getRepositories() {
-        const user = await this.getCurrentUser();
-        const repos = await this.request(`/user/${user.login}/repos?sort=updated&per_page=100`);
-        return repos;
+        try {
+            // Use /user/repos to get repos the authenticated user has access to
+            // This includes private repos if token has 'repo' scope
+            const repos = await this.request('/user/repos?sort=updated&per_page=100&visibility=all');
+            return repos;
+        } catch (error) {
+            console.error('Failed to fetch repositories:', error);
+            // Provide more helpful error message for common issues
+            if (error.message && error.message.toLowerCase().includes('not found')) {
+                throw new Error('Failed to load repositories. This usually means the access token lacks the required "repo" scope. Please generate a new token with "repo" (full control of repositories) permission at https://github.com/settings/tokens');
+            }
+            throw error;
+        }
     }
 
     /**
@@ -938,17 +948,24 @@ class GitHubBoardsUI {
         const headerControls = document.querySelector('.header-controls');
         if (!headerControls) return;
 
-        // Check if button already exists
-        if (document.getElementById('github-boards-btn')) return;
+        // Use existing button from HTML instead of creating duplicate
+        const githubBtn = document.getElementById('github-btn');
+        if (githubBtn) {
+            // Ensure correct title
+            githubBtn.title = 'GitHub Boards';
+            // Attach click handler to open modal
+            githubBtn.addEventListener('click', () => this.openModal());
+            return;
+        }
 
-        const githubBtn = document.createElement('button');
-        githubBtn.id = 'github-boards-btn';
-        githubBtn.className = 'btn icon-only';
-        githubBtn.title = 'GitHub Boards';
-        githubBtn.innerHTML = '<i class="fab fa-github"></i>';
-        githubBtn.addEventListener('click', () => this.openModal());
-
-        headerControls.appendChild(githubBtn);
+        // Fallback: create button if it doesn't exist
+        const newBtn = document.createElement('button');
+        newBtn.id = 'github-boards-btn';
+        newBtn.className = 'btn icon-only';
+        newBtn.title = 'GitHub Boards';
+        newBtn.innerHTML = '<i class="fab fa-github"></i>';
+        newBtn.addEventListener('click', () => this.openModal());
+        headerControls.appendChild(newBtn);
     }
 
     addGitHubModalToPage() {
@@ -1349,20 +1366,13 @@ class GitHubBoardsUI {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-        const initGitHub = () => {
-            if (window.Notifications) {
-                window.githubBoardsUI = new GitHubBoardsUI({
-                    kanbanBoard: window.kanbanBoard,
-                    notifications: window.Notifications
-                });
-            
-            // Add event listener for GitHub button in header
-            const githubBtn = document.getElementById('github-btn');
-            if (githubBtn) {
-                githubBtn.addEventListener('click', () => {
-                    window.githubBoardsUI.openModal();
-                });
-            }
+    const initGitHub = () => {
+        if (window.Notifications) {
+            window.githubBoardsUI = new GitHubBoardsUI({
+                kanbanBoard: window.kanbanBoard,
+                notifications: window.Notifications
+            });
+            // Note: GitHub button event listener is now set up inside GitHubBoardsUI.addGitHubButtonToHeader()
         } else {
             setTimeout(initGitHub, 100);
         }
