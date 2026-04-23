@@ -99,26 +99,32 @@ class GitHubAPI {
             throw new Error('Not authenticated with GitHub');
         }
 
-        const response = await fetch(this.GRAPHQL_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ query, variables })
-        });
+        try {
+            const response = await fetch(this.GRAPHQL_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query, variables })
+            });
 
-        if (!response.ok) {
-            throw new Error(`GraphQL error: ${response.status}`);
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`GitHub API error ${response.status}: ${text.slice(0, 200)}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.errors) {
+                throw new Error(result.errors.map(e => e.message).join(', '));
+            }
+
+            return result.data;
+        } catch (error) {
+            console.error('GraphQL request failed:', error.message);
+            throw error;
         }
-
-        const result = await response.json();
-        
-        if (result.errors) {
-            throw new Error(result.errors.map(e => e.message).join(', '));
-        }
-
-        return result.data;
     }
 
     /**
@@ -160,7 +166,8 @@ class GitHubAPI {
     }
 
     /**
-     * Get user's projects (ProjectsV2)
+     * Get user's ProjectsV2
+     * Uses GraphQL API (no REST fallback — requires 'repo' or 'read:user' scopes)
      */
     async getProjects() {
         const query = `
@@ -171,13 +178,6 @@ class GitHubAPI {
                             id
                             title
                             number
-                            fields(first: 20) {
-                                nodes {
-                                    id
-                                    name
-                                    dataType
-                                }
-                            }
                         }
                     }
                 }
@@ -186,18 +186,13 @@ class GitHubAPI {
         
         try {
             const data = await this.graphql(query);
-            return data.viewer.projectsV2.nodes;
+            const projects = data?.viewer?.projectsV2?.nodes || [];
+            // Filter out any null entries
+            return projects.filter(p => p && p.id && p.title);
         } catch (error) {
-            console.warn('GraphQL not available, using REST API for projects');
-            // Fallback to REST API for classic projects
-            const user = await this.getCurrentUser();
-            const projects = await this.request(`/users/${user.login}/projects`);
-            return projects.map(p => ({
-                id: p.id,
-                title: p.name,
-                number: p.number,
-                fields: { nodes: [] }
-            }));
+            console.warn('Failed to fetch ProjectsV2:', error.message);
+            // Return empty array — projects UI will show "no projects" message
+            return [];
         }
     }
 
@@ -348,8 +343,15 @@ class GitHubAPI {
      * Get repository collaborators
      */
     async getRepoCollaborators(owner, repo) {
-        const collaborators = await this.request(`/repos/${owner}/${repo}/collaborators?per_page=100`);
-        return collaborators;
+        try {
+            const collaborators = await this.request(`/repos/${owner}/${repo}/collaborators?per_page=100`);
+            return collaborators;
+        } catch (error) {
+            if (error.message && error.message.includes('403')) {
+                throw new Error('Insufficient permissions to access collaborators. Token needs "repo" scope and user must have admin/repo access to the repository.');
+            }
+            throw error;
+        }
     }
 
     /**
@@ -1421,7 +1423,7 @@ class GitHubBoardsUI {
         }
         
         try {
-            const collaborators = await this.githubBoards.api.getRepoCollaborators(repo.owner.login, repo.name);
+            const collaborators = await this.githubBoards.getRepoCollaborators(repo.owner.login, repo.name);
             
             if (collaborators.length === 0) {
                 collaboratorsEl.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9em;">No collaborators found</p>';

@@ -37,7 +37,8 @@ class DatabaseManager {
 
         // Verify token is valid by attempting an API call
         try {
-            await window.githubBoardsUI?.githubBoards?.api?.getCurrentUser();
+            const githubBoards = window.githubBoardsUI.githubBoards;
+            await githubBoards.api.getCurrentUser();
         } catch (error) {
             this.showNotification('GitHub authentication invalid. Please reconnect.', 'error');
             window.githubBoardsUI?.githubBoards?.disconnect?.();
@@ -176,7 +177,7 @@ class DatabaseManager {
         try {
             this.showNotification('Loading from GitHub Issues...', 'info');
 
-            const githubBoards = window.githubBoardsUI?.githubBoards;
+            const githubBoards = window.githubBoardsUI.githubBoards;
             if (!githubBoards) {
                 throw new Error('GitHub integration not initialized');
             }

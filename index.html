@@ -30,12 +30,12 @@
                 </button>
             </div>
             <button id="github-btn" class="btn" title="GitHub Boards">
-                <i class="fab fa-github"></i> GitHub
+                <i class="fab fa-github"></i> <span class="btn-text">GitHub</span>
             </button>
             <button id="messages-btn" class="btn icon-only" title="Messages">
                 <i class="fas fa-comment-alt"></i>
             </button>
-            <button id="add-user-btn" class="btn"><i class="fas fa-user-plus"></i> Add User</button>
+            <button id="add-user-btn" class="btn"><i class="fas fa-user-plus"></i> <span class="btn-text">Add User</span></button>
             <button id="settings-btn" class="btn icon-only" title="Settings"><i class="fas fa-cog"></i></button>
         </div>
     </header>
@@ -153,9 +153,11 @@
 
                     <div class="form-group">
                         <label for="task-milestone">Milestone</label>
-                        <select id="task-milestone">
+                        <input type="text" id="task-milestone" list="milestone-list"
+                            placeholder="Select or type a milestone">
+                        <datalist id="milestone-list">
                             <option value="">No Milestone</option>
-                        </select>
+                        </datalist>
                     </div>
 
                     <div class="form-group">
@@ -171,11 +173,25 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="task-labels">Labels</label>
-                        <select id="task-labels" multiple style="height: 120px;">
-                            <option value="">Select labels...</option>
-                        </select>
-                        <small style="color: var(--text-secondary);">Hold Ctrl/Cmd to select multiple</small>
+                        <label>Labels</label>
+                        <div class="custom-select-wrapper">
+                            <div class="label-select-container" id="label-select-container">
+                                <div class="label-select-trigger" id="label-select-trigger" tabindex="0" role="combobox"
+                                    aria-expanded="false" aria-label="Select labels">
+                                    <span class="label-select-placeholder">Select labels...</span>
+                                </div>
+                                <div class="label-select-dropdown" id="label-select-dropdown" style="display: none;"
+                                    role="listbox">
+                                    <div class="label-options" id="label-options" role="presentation">
+                                        <!-- Options will be injected here -->
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="selected-labels" id="selected-labels" style="margin-top: 8px;"
+                                aria-live="polite">
+                                <!-- Selected labels appear as badges here -->
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -221,23 +237,28 @@
                         <!-- Hidden inputs for each attachment type -->
                         <div class="attachment-input-group" id="new-image-group" style="display:none;">
                             <input type="url" id="new-image-url" placeholder="Enter image URL...">
-                            <button type="button" class="btn btn-sm add-attachment-btn" data-type="image" data-input="new-image-url">Add</button>
+                            <button type="button" class="btn btn-sm add-attachment-btn" data-type="image"
+                                data-input="new-image-url">Add</button>
                         </div>
                         <div class="attachment-input-group" id="new-video-group" style="display:none;">
                             <input type="url" id="new-video-url" placeholder="Enter video URL...">
-                            <button type="button" class="btn btn-sm add-attachment-btn" data-type="video" data-input="new-video-url">Add</button>
+                            <button type="button" class="btn btn-sm add-attachment-btn" data-type="video"
+                                data-input="new-video-url">Add</button>
                         </div>
                         <div class="attachment-input-group" id="new-audio-group" style="display:none;">
                             <input type="url" id="new-audio-url" placeholder="Enter audio URL...">
-                            <button type="button" class="btn btn-sm add-attachment-btn" data-type="audio" data-input="new-audio-url">Add</button>
+                            <button type="button" class="btn btn-sm add-attachment-btn" data-type="audio"
+                                data-input="new-audio-url">Add</button>
                         </div>
                         <div class="attachment-input-group" id="new-doc-group" style="display:none;">
                             <input type="url" id="new-doc-url" placeholder="Enter document URL...">
-                            <button type="button" class="btn btn-sm add-attachment-btn" data-type="doc" data-input="new-doc-url">Add</button>
+                            <button type="button" class="btn btn-sm add-attachment-btn" data-type="doc"
+                                data-input="new-doc-url">Add</button>
                         </div>
                         <div class="attachment-input-group" id="new-link-group" style="display:none;">
                             <input type="url" id="new-link-url" placeholder="Enter link URL...">
-                            <button type="button" class="btn btn-sm add-attachment-btn" data-type="link" data-input="new-link-url">Add</button>
+                            <button type="button" class="btn btn-sm add-attachment-btn" data-type="link"
+                                data-input="new-link-url">Add</button>
                         </div>
                     </div>
 
@@ -361,7 +382,8 @@
                 <div id="google-sheets-signedin" style="display: none;">
                     <div class="form-group">
                         <label>Spreadsheet URL</label>
-                        <input type="url" id="gs-spreadsheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
+                        <input type="url" id="gs-spreadsheet-url"
+                            placeholder="https://docs.google.com/spreadsheets/d/...">
                     </div>
 
                     <div class="form-group">
@@ -413,25 +435,25 @@
                     <button class="settings-tab" data-tab="comments">Comments</button>
                 </div>
 
-                 <!-- Boards Tab -->
-                 <div class="settings-tab-content" id="tab-boards">
-                     <h4>Board Management</h4>
-                     <div class="board-actions">
-                         <button class="btn" id="save-board-btn"><i class="fas fa-save"></i> Save</button>
-                         <button class="btn" id="auto-save-btn"><i class="fas fa-save"></i> Auto-Save</button>
-                         <button class="btn" id="export-json-btn"><i class="fas fa-file-export"></i> Export JSON</button>
-                         <button class="btn" id="import-json-btn"><i class="fas fa-file-import"></i> Import JSON</button>
-                         <input type="file" id="import-json-input" accept=".json" style="display:none">
-                     </div>
-                     
-                     <div class="database-actions" style="margin-top: 16px;">
-                         <button id="google-sheets-btn" class="btn" title="Google Sheets Backup">
-                             <i class="fab fa-google"></i> Sheets
-                         </button>
-                         <button id="google-login-btn" class="btn" title="Sign in with Google">
-                             <i class="fab fa-google"></i> Sign in with Google
-                         </button>
-                     </div>
+                <!-- Boards Tab -->
+                <div class="settings-tab-content" id="tab-boards">
+                    <h4>Board Management</h4>
+                    <div class="board-actions">
+                        <button class="btn" id="save-board-btn"><i class="fas fa-save"></i> Save</button>
+                        <button class="btn" id="auto-save-btn"><i class="fas fa-save"></i> Auto-Save</button>
+                        <button class="btn" id="export-json-btn"><i class="fas fa-file-export"></i> Export JSON</button>
+                        <button class="btn" id="import-json-btn"><i class="fas fa-file-import"></i> Import JSON</button>
+                        <input type="file" id="import-json-input" accept=".json" style="display:none">
+                    </div>
+
+                    <div class="database-actions" style="margin-top: 16px;">
+                        <button id="google-sheets-btn" class="btn" title="Google Sheets Backup">
+                            <i class="fab fa-google"></i> Sheets
+                        </button>
+                        <button id="google-login-btn" class="btn" title="Sign in with Google">
+                            <i class="fab fa-google"></i> Sign in with Google
+                        </button>
+                    </div>
                     <h4 style="margin-top: 20px;">Saved Boards</h4>
                     <div id="saved-boards-list" class="saved-boards-list">
                         <!-- Dynamically populated -->
@@ -647,7 +669,7 @@
         </div>
         <button class="sidebar-close" id="messages-sidebar-close">&times;</button>
     </header>
-    
+
     <div class="sidebar-content">
         <div class="form-group">
             <label for="messages-user-select">Select User</label>
@@ -655,7 +677,7 @@
                 <option value="">Select a user...</option>
             </select>
         </div>
-        
+
         <div id="messages-list" class="messages-list">
             <p class="empty-message">Select a user to view their comments</p>
         </div>

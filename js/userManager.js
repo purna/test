@@ -113,7 +113,7 @@ class UserManager {
         }
 
         // Listen for auth state changes
-        firebaseAuth.onAuthStateChanged((user) => {
+        window.firebaseAuth.onAuthStateChanged((user) => {
             this.handleAuthStateChange(user);
         });
     }

@@ -228,7 +228,7 @@ const googleSheetsConfig = {
  * 1. Go to https://console.firebase.google.com/
  * 2. Create a new Firebase project
  * 3. Add a web app to the project
- * 4. Copy the firebaseConfig object
+  * 4. Copy the appFirebaseConfig object
  * 5. Enable Google sign-in in Authentication > Sign-in method
  */
 
@@ -416,8 +416,8 @@ function isGoogleSheetsConfigured() {
  * Check if Firebase is configured and initialized
  */
 function isFirebaseConfigured() {
-    // Check if firebaseAuth is available and initialized (from firebaseConfig.js)
-    return typeof firebaseAuth !== 'undefined' && firebaseAuth !== null;
+    // Check if window.firebaseAuth is available and initialized (from firebaseConfig.js)
+    return typeof window !== 'undefined' && typeof window.firebaseAuth !== 'undefined' && window.firebaseAuth !== null;
 }
 
 /**

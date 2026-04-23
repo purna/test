@@ -176,6 +176,10 @@
     min-height: 80px;
 }
 
+.form-group input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
 /* Form validation states */
 .form-group input:required:not(:placeholder-shown):invalid,
 .form-group textarea:required:not(:placeholder-shown):invalid {

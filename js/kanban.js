@@ -104,7 +104,7 @@ class KanbanBoard {
     renderBoard() {
         // Load panel configuration
         this.loadPanelConfig();
-        
+
         // Render columns based on configuration
         this.columns.forEach((status, index) => {
             const column = document.getElementById(`${status}-tasks`);
@@ -114,7 +114,7 @@ class KanbanBoard {
                 columnTasks.forEach(task => this.renderTask(task, column));
             }
         });
-        
+
         // Update column headers with names
         this.columns.forEach((status, index) => {
             const columnElement = document.getElementById(`${status}-tasks`);
@@ -125,7 +125,7 @@ class KanbanBoard {
                 }
             }
         });
-        
+
         this.updateTaskCounts();
     }
 
@@ -153,7 +153,7 @@ class KanbanBoard {
         taskElement.className = 'task-card';
         taskElement.draggable = true;
         taskElement.dataset.taskId = task.id;
-        
+
         // Apply background color
         if (task.backgroundColor && task.backgroundColor !== '#2d2d2d') {
             taskElement.style.backgroundColor = task.backgroundColor;
@@ -163,14 +163,14 @@ class KanbanBoard {
         const assigneeEmail = task.assignee ? this.getUserEmail(task.assignee) : '';
         const dueDate = task.dueDate ? this.formatTaskDate(task.dueDate) : '';
         const createdDate = this.formatTaskDate(task.createdAt);
-        
+
         // Determine due date color based on urgency
         let dueDateClass = '';
         if (task.dueDate) {
             const due = new Date(task.dueDate);
             const now = new Date();
             const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-            
+
             if (due < now) {
                 dueDateClass = 'past-due';
             } else if (due <= oneWeekFromNow) {
@@ -179,7 +179,7 @@ class KanbanBoard {
                 dueDateClass = 'due-later';
             }
         }
-        
+
         // Determine milestone class for styling
         let milestoneClass = 'task-milestone-badge';
         if (task.milestone && task.milestone.name) {
@@ -195,7 +195,7 @@ class KanbanBoard {
                 const labelName = typeof label === 'object' ? label.name : label;
                 const bgColor = this.getLabelColor(label);
                 const textColor = this.getLabelTextColor(bgColor);
-                labelsHTML += `<span class="task-label-badge" style="background-color: ${bgColor}; color: ${textColor}">${this.escapeHtml(labelName)}</span>`;
+                labelsHTML += `<span class="task-label-badge" style="background-color: #${bgColor}; color: ${textColor}">${this.escapeHtml(labelName)}</span>`;
             });
             labelsHTML += '</div>';
         }
@@ -208,7 +208,7 @@ class KanbanBoard {
                 const icon = this.getAttachmentIcon(att.type);
                 const isImage = att.type === 'image';
                 const preview = isImage ? `<img src="${att.url}" alt="${att.name}" onerror="this.style.display='none'">` : '';
-                
+
                 attachmentsHTML += `
                     <div class="attachment-item" onclick="kanbanBoard.openGallery('${task.id}', ${index})">
                         <div class="attachment-icon">${preview || '<i class="fas ' + icon + '"></i>'}</div>
@@ -280,28 +280,28 @@ class KanbanBoard {
     // Check if URL is a video
     isVideoUrl(url) {
         const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
-        return videoExtensions.some(ext => url.toLowerCase().includes(ext)) || 
-               url.includes('youtube.com') || 
-               url.includes('youtu.be') ||
-               url.includes('vimeo.com');
+        return videoExtensions.some(ext => url.toLowerCase().includes(ext)) ||
+            url.includes('youtube.com') ||
+            url.includes('youtu.be') ||
+            url.includes('vimeo.com');
     }
 
     // Open gallery modal
     openGallery(taskId, attachmentIndex = 0) {
         const task = this.tasks.find(t => t.id == taskId);
         if (!task || !task.attachments || task.attachments.length === 0) return;
-        
+
         this.currentGalleryTaskId = taskId;
         this.currentGalleryIndex = attachmentIndex;
-        
+
         const modal = document.getElementById('gallery-modal');
         const content = document.getElementById('gallery-content');
         const title = document.getElementById('gallery-modal-title');
         const prevBtn = document.getElementById('gallery-prev-btn');
         const nextBtn = document.getElementById('gallery-next-btn');
-        
+
         title.textContent = `Attachments: ${task.title}`;
-        
+
         // Show/hide navigation buttons based on attachment count
         if (task.attachments.length > 1) {
             if (prevBtn) prevBtn.style.display = 'flex';
@@ -310,7 +310,7 @@ class KanbanBoard {
             if (prevBtn) prevBtn.style.display = 'none';
             if (nextBtn) nextBtn.style.display = 'none';
         }
-        
+
         this.renderGalleryAttachment(task, attachmentIndex);
         modal.classList.add('active');
     }
@@ -319,23 +319,23 @@ class KanbanBoard {
     renderGalleryAttachment(task, index) {
         const content = document.getElementById('gallery-content');
         const counter = document.getElementById('gallery-counter');
-        
+
         if (!task.attachments[index]) return;
-        
+
         const att = task.attachments[index];
         const isYouTube = this.isYouTubeUrl(att.url);
         const isVimeo = this.isVimeoUrl(att.url);
         const isVideo = this.isVideoUrl(att.url) || isYouTube || isVimeo;
         const isImage = att.type === 'image';
         const isAudio = att.type === 'audio';
-        
+
         // Update counter
         if (counter) {
             counter.textContent = `${index + 1} / ${task.attachments.length}`;
         }
-        
+
         let html = '';
-        
+
         if (isYouTube) {
             // YouTube embed
             const videoId = this.getYouTubeVideoId(att.url);
@@ -424,7 +424,7 @@ class KanbanBoard {
                 </div>
             </div>`;
         }
-        
+
         content.innerHTML = html;
     }
 
@@ -467,7 +467,7 @@ class KanbanBoard {
         if (!this.currentGalleryTaskId) return;
         const task = this.tasks.find(t => t.id == this.currentGalleryTaskId);
         if (!task || !task.attachments) return;
-        
+
         this.currentGalleryIndex = (this.currentGalleryIndex - 1 + task.attachments.length) % task.attachments.length;
         this.renderGalleryAttachment(task, this.currentGalleryIndex);
     }
@@ -477,7 +477,7 @@ class KanbanBoard {
         if (!this.currentGalleryTaskId) return;
         const task = this.tasks.find(t => t.id == this.currentGalleryTaskId);
         if (!task || !task.attachments) return;
-        
+
         this.currentGalleryIndex = (this.currentGalleryIndex + 1) % task.attachments.length;
         this.renderGalleryAttachment(task, this.currentGalleryIndex);
     }
@@ -546,18 +546,18 @@ class KanbanBoard {
     // Open email modal
     openEmailModal(email, taskTitle) {
         if (!email) return;
-        
+
         const modal = document.getElementById('email-modal');
         document.getElementById('email-to').value = email;
         document.getElementById('email-subject').value = `Regarding task: ${taskTitle}`;
         document.getElementById('email-body').value = '';
-        
+
         // Update send button to open email client
         const sendBtn = document.getElementById('email-send-btn');
         const subject = encodeURIComponent(`Regarding task: ${taskTitle}`);
         const body = encodeURIComponent('');
         sendBtn.href = `mailto:${email}?subject=${subject}&body=${body}`;
-        
+
         modal.classList.add('active');
     }
 
@@ -569,17 +569,17 @@ class KanbanBoard {
     formatTaskDate(dateString) {
         if (!dateString) return '';
         const date = new Date(dateString);
-        
+
         // Get date format from settingsManager if available
         let dateFormat = 'uk';
         if (window.settingsManager) {
             dateFormat = window.settingsManager.dateFormat || 'uk';
         }
-        
+
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
-        
+
         if (dateFormat === 'us') {
             return `${month}/${day}/${year}`;
         } else {
@@ -636,6 +636,11 @@ class KanbanBoard {
 
         this.populateAssigneeDropdown();
         await this.populateMilestoneDropdown();
+
+        // Reset placeholder opacity before populating labels
+        const placeholder = document.querySelector('#label-select-trigger .label-select-placeholder');
+        if (placeholder) placeholder.style.opacity = '1';
+
         await this.populateLabelsDropdown();
         await this.populateProjectDropdown();
 
@@ -666,14 +671,9 @@ class KanbanBoard {
             parentIssueInput.value = '';
         }
 
-        // Set labels after populating dropdown
-        const labelsSelect = document.getElementById('task-labels');
-        if (labelsSelect && task && task.labels) {
-            task.labels.forEach(label => {
-                const labelName = typeof label === 'object' ? label.name : label;
-                const option = labelsSelect.querySelector(`option[value="${labelName}"]`);
-                if (option) option.selected = true;
-            });
+        // Set selected labels after options are rendered
+        if (task && task.labels) {
+            this.setSelectedLabels(task.labels);
         }
 
         this.setupAttachmentListeners();
@@ -687,25 +687,25 @@ class KanbanBoard {
     setupEmojiPickerListeners() {
         const emojiInput = document.getElementById('task-emoji');
         const emojiDropdown = document.querySelector('.emoji-picker-dropdown');
-        
+
         if (!emojiInput || !emojiDropdown) return;
-        
+
         // Toggle dropdown on input focus/click
         emojiInput.addEventListener('focus', () => {
             emojiDropdown.classList.add('active');
         });
-        
+
         emojiInput.addEventListener('click', () => {
             emojiDropdown.classList.add('active');
         });
-        
+
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
             if (!emojiInput.contains(e.target) && !emojiDropdown.contains(e.target)) {
                 emojiDropdown.classList.remove('active');
             }
         });
-        
+
         // Handle emoji selection
         emojiDropdown.querySelectorAll('.emoji-option').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -740,21 +740,21 @@ class KanbanBoard {
     renderAttachmentsList(attachments) {
         const container = document.getElementById('attachments-list');
         if (!container) return;
-        
+
         container.innerHTML = '';
-        
+
         if (attachments.length === 0) {
             container.innerHTML = '<p class="empty-message">No attachments yet. Click a button below to add.</p>';
             return;
         }
-        
+
         attachments.forEach((att, index) => {
             const item = document.createElement('div');
             item.className = 'attachment-item';
-            
+
             const icon = this.getAttachmentIcon(att.type);
             const preview = att.type === 'image' ? `<img src="${att.url}" alt="${att.name || 'Image'}" onerror="this.style.display='none'">` : '';
-            
+
             item.innerHTML = `
                 <div class="attachment-preview">${preview || '<i class="fas ' + icon + '"></i>'}</div>
                 <div class="attachment-info">
@@ -763,7 +763,7 @@ class KanbanBoard {
                 </div>
                 <button type="button" class="btn btn-sm remove-attachment" data-index="${index}"><i class="fas fa-times"></i></button>
             `;
-            
+
             // Add click handler for preview
             item.style.cursor = 'pointer';
             item.onclick = (e) => {
@@ -775,10 +775,10 @@ class KanbanBoard {
                     }
                 }
             };
-            
+
             container.appendChild(item);
         });
-        
+
         // Add remove handlers
         container.querySelectorAll('.remove-attachment').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -804,10 +804,10 @@ class KanbanBoard {
     // Setup attachment add button listeners
     setupAttachmentListeners() {
         const types = ['image', 'video', 'audio', 'doc', 'link'];
-        
+
         types.forEach(type => {
             const btn = document.getElementById(`add-${type}-btn`);
-            
+
             if (btn) {
                 btn.onclick = () => {
                     // Hide all input groups first
@@ -815,7 +815,7 @@ class KanbanBoard {
                         const group = document.getElementById(`new-${t}-group`);
                         if (group) group.style.display = 'none';
                     });
-                    
+
                     // Show this input group
                     const group = document.getElementById(`new-${type}-group`);
                     if (group) {
@@ -834,18 +834,18 @@ class KanbanBoard {
                 };
             }
         });
-        
+
         // Add button listeners for each attachment type
         document.querySelectorAll('.add-attachment-btn').forEach(btn => {
             btn.onclick = (e) => {
                 const type = e.target.dataset.type;
                 const inputId = e.target.dataset.input;
                 const input = document.getElementById(inputId);
-                
+
                 if (input && input.value.trim()) {
                     this.addAttachment(type, input.value.trim());
                     input.value = '';
-                    
+
                     // Hide the input group
                     const group = document.getElementById(`new-${type}-group`);
                     if (group) group.style.display = 'none';
@@ -857,16 +857,16 @@ class KanbanBoard {
     // Add attachment
     addAttachment(type, url) {
         let attachments = this.currentAttachments || [];
-        
+
         // Map doc to document
         const attType = type === 'doc' ? 'document' : type;
-        
+
         attachments.push({
             type: attType,
             url: url,
             name: url.split('/').pop().split('?')[0] || 'Untitled'
         });
-        
+
         this.currentAttachments = attachments;
         this.renderAttachmentsList(attachments);
     }
@@ -883,40 +883,40 @@ class KanbanBoard {
     renderCommentsList(comments) {
         const container = document.getElementById('comments-list');
         if (!container) return;
-        
+
         // Check if users exist
         const usersExist = window.userManager && window.userManager.users && window.userManager.users.length > 0;
-        
+
         container.innerHTML = '';
-        
+
         if (!usersExist) {
             container.innerHTML = '<p class="no-comments">Create a user first to add and view comments.</p>';
             return;
         }
-        
+
         if (comments.length === 0) {
             container.innerHTML = '<p class="no-comments">No comments yet. Be the first to comment!</p>';
             return;
         }
-        
+
         // Get task assignee name (default)
         const task = this.tasks.find(t => t.id === this.currentTaskId);
         const taskAssignee = task && task.assignee ? this.getUserName(task.assignee) : 'Unassigned';
-        
+
         comments.forEach(comment => {
             const userName = this.getUserName(comment.userId);
             const userInitial = userName.charAt(0).toUpperCase();
             const commentDate = this.formatFullDate(comment.createdAt);
-            
+
             // Use comment's assigneeId if set, otherwise fall back to task assignee
-            const commentAssignee = (comment.assigneeId !== undefined && comment.assigneeId !== null) 
-                ? this.getUserName(comment.assigneeId) 
+            const commentAssignee = (comment.assigneeId !== undefined && comment.assigneeId !== null)
+                ? this.getUserName(comment.assigneeId)
                 : taskAssignee;
-            
+
             const item = document.createElement('div');
             item.className = 'comment-item';
             item.dataset.commentId = comment.id;
-            
+
             item.innerHTML = `
                 <div class="comment-avatar">${userInitial}</div>
                 <div class="comment-content">
@@ -938,10 +938,10 @@ class KanbanBoard {
                     </div>
                 </div>
             `;
-            
+
             container.appendChild(item);
         });
-        
+
         // Add event listeners for edit and delete buttons
         container.querySelectorAll('.edit-comment-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -950,7 +950,7 @@ class KanbanBoard {
                 this.openCommentEditModal(commentId);
             });
         });
-        
+
         container.querySelectorAll('.delete-comment-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -964,20 +964,20 @@ class KanbanBoard {
     formatFullDate(dateString) {
         if (!dateString) return '';
         const date = new Date(dateString);
-        
+
         // Get date format from settingsManager if available
         let dateFormat = 'uk';
         if (window.settingsManager) {
             dateFormat = window.settingsManager.dateFormat || 'uk';
         }
-        
+
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
-        
+
         const hours = String(date.getHours()).padStart(2, '0');
         const minutes = String(date.getMinutes()).padStart(2, '0');
-        
+
         if (dateFormat === 'us') {
             return `${month}/${day}/${year} ${hours}:${minutes}`;
         } else {
@@ -989,10 +989,10 @@ class KanbanBoard {
     setupCommentListeners() {
         const addBtn = document.getElementById('add-comment-btn');
         const commentText = document.getElementById('new-comment-text');
-        
+
         // Check if users exist
         const usersExist = window.userManager && window.userManager.users && window.userManager.users.length > 0;
-        
+
         if (!usersExist) {
             // Disable comment functionality when no users exist
             if (addBtn) {
@@ -1005,7 +1005,7 @@ class KanbanBoard {
             }
             return;
         }
-        
+
         if (addBtn) {
             addBtn.disabled = false;
             addBtn.title = '';
@@ -1014,7 +1014,7 @@ class KanbanBoard {
             commentText.disabled = false;
             commentText.placeholder = 'Add a comment...';
         }
-        
+
         if (addBtn) {
             addBtn.onclick = () => {
                 if (commentText && commentText.value.trim()) {
@@ -1023,7 +1023,7 @@ class KanbanBoard {
                 }
             };
         }
-        
+
         if (commentText) {
             commentText.onkeydown = (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -1035,7 +1035,7 @@ class KanbanBoard {
                 }
             };
         }
-        
+
         // Comment edit modal listeners
         this.setupCommentEditModalListeners();
     }
@@ -1044,30 +1044,30 @@ class KanbanBoard {
     setupCommentEditModalListeners() {
         const modal = document.getElementById('comment-edit-modal');
         if (!modal) return;
-        
+
         const closeBtn = document.getElementById('comment-edit-modal-close');
         const cancelBtn = document.getElementById('comment-edit-cancel-btn');
         const saveBtn = document.getElementById('comment-edit-save-btn');
-        
+
         if (closeBtn) {
             closeBtn.onclick = () => modal.classList.remove('active');
         }
-        
+
         if (cancelBtn) {
             cancelBtn.onclick = () => modal.classList.remove('active');
         }
-        
+
         if (saveBtn) {
             saveBtn.onclick = () => this.saveCommentEdit();
         }
-        
+
         // Close on overlay click
         modal.onclick = (e) => {
             if (e.target === modal) {
                 modal.classList.remove('active');
             }
         };
-        
+
         // Close on Escape
         document.onkeydown = (e) => {
             if (e.key === 'Escape' && modal.classList.contains('active')) {
@@ -1080,14 +1080,14 @@ class KanbanBoard {
     openCommentEditModal(commentId) {
         const task = this.tasks.find(t => t.id === this.currentTaskId);
         if (!task || !task.comments) return;
-        
+
         const comment = task.comments.find(c => c.id === commentId);
         if (!comment) return;
-        
+
         const modal = document.getElementById('comment-edit-modal');
         const editText = document.getElementById('comment-edit-text');
         const assigneeSelect = document.getElementById('comment-edit-assignee');
-        
+
         // Populate assignee dropdown
         assigneeSelect.innerHTML = '<option value="">Unassigned</option>';
         if (window.userManager && window.userManager.users) {
@@ -1098,10 +1098,10 @@ class KanbanBoard {
                 assigneeSelect.appendChild(option);
             });
         }
-        
+
         editText.value = comment.text;
         assigneeSelect.value = comment.assigneeId || '';
-        
+
         modal.classList.add('active');
         this.currentCommentId = commentId;
         editText.focus();
@@ -1112,10 +1112,10 @@ class KanbanBoard {
         const editText = document.getElementById('comment-edit-text');
         const assigneeSelect = document.getElementById('comment-edit-assignee');
         if (!editText || !this.currentCommentId) return;
-        
+
         const task = this.tasks.find(t => t.id === this.currentTaskId);
         if (!task || !task.comments) return;
-        
+
         const comment = task.comments.find(c => c.id === this.currentCommentId);
         if (comment) {
             comment.text = editText.value.trim();
@@ -1125,7 +1125,7 @@ class KanbanBoard {
             this.renderCommentsList(task.comments);
             this.showNotification('Comment updated', 'success');
         }
-        
+
         document.getElementById('comment-edit-modal').classList.remove('active');
         this.currentCommentId = null;
     }
@@ -1133,12 +1133,12 @@ class KanbanBoard {
     // Add comment
     addComment(text) {
         if (!this.currentTaskId) return;
-        
+
         const task = this.tasks.find(t => t.id === this.currentTaskId);
         if (!task) return;
-        
+
         if (!task.comments) task.comments = [];
-        
+
         const comment = {
             id: Date.now(),
             userId: window.userManager ? window.userManager.currentUserId : null,
@@ -1146,7 +1146,7 @@ class KanbanBoard {
             text: text,
             createdAt: new Date().toISOString()
         };
-        
+
         task.comments.push(comment);
         this.saveTasks();
         this.renderCommentsList(task.comments);
@@ -1157,28 +1157,37 @@ class KanbanBoard {
     deleteComment(commentId) {
         const task = this.tasks.find(t => t.id === this.currentTaskId);
         if (!task || !task.comments) return;
-        
+
         if (!confirm('Are you sure you want to delete this comment?')) return;
-        
+
         task.comments = task.comments.filter(c => c.id !== commentId);
         this.saveTasks();
         this.renderCommentsList(task.comments);
         this.showNotification('Comment deleted', 'success');
     }
 
-    // Get selected labels from the labels select element
+    // Get selected label names from the custom picker badges
     getSelectedLabels() {
-        const select = document.getElementById('task-labels');
-        if (!select) return [];
-        return Array.from(select.selectedOptions).map(option => option.value);
+        const selectedContainer = document.getElementById('selected-labels');
+        if (!selectedContainer) return [];
+        return Array.from(selectedContainer.children).map(badge => badge.dataset.label);
     }
 
     // Close task modal
     closeTaskModal() {
-        const select = document.getElementById('task-labels');
-        if (select) {
-            select.selectedIndex = 0;
+        // Clear selected labels display and reset placeholder opacity
+        const selectedContainer = document.getElementById('selected-labels');
+        const trigger = document.getElementById('label-select-trigger');
+        const placeholder = trigger?.querySelector('.label-select-placeholder');
+        if (selectedContainer) {
+            selectedContainer.innerHTML = '';
         }
+        if (placeholder) {
+            placeholder.style.opacity = '1';
+        }
+        // Close dropdown if open
+        const dropdown = document.getElementById('label-select-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
         document.getElementById('task-modal').classList.remove('active');
         this.currentTaskId = null;
         this.currentAttachments = [];
@@ -1247,7 +1256,7 @@ class KanbanBoard {
 
         // Handle both string and number IDs
         const userIdNum = typeof userId === 'string' ? parseInt(userId) : userId;
-        
+
         // Wait for userManager to be ready
         if (!window.userManager) {
             container.innerHTML = '<p class="message-empty">Loading users...</p>';
@@ -1295,14 +1304,14 @@ class KanbanBoard {
         // Group by panel/status using an array to preserve order
         const groups = [];
         const groupMap = {};
-        
-        messages.forEach(({comment, task}) => {
+
+        messages.forEach(({ comment, task }) => {
             // Get panel index and name
             const panelIndex = columns.indexOf(task.status);
-            const panelName = panelIndex >= 0 && panelIndex < panelConfig.names.length 
-                ? panelConfig.names[panelIndex] 
+            const panelName = panelIndex >= 0 && panelIndex < panelConfig.names.length
+                ? panelConfig.names[panelIndex]
                 : task.status;
-            
+
             if (!groupMap[panelName]) {
                 groupMap[panelName] = {
                     name: panelName,
@@ -1311,7 +1320,7 @@ class KanbanBoard {
                 };
                 groups.push(groupMap[panelName]);
             }
-            groupMap[panelName].items.push({comment, task});
+            groupMap[panelName].items.push({ comment, task });
         });
 
         // Sort groups by panel index to match kanban board order
@@ -1323,7 +1332,7 @@ class KanbanBoard {
             groupDiv.className = 'message-group';
             groupDiv.innerHTML = `<div class="message-group-title">${group.name}</div>`;
 
-            group.items.forEach(({comment, task}) => {
+            group.items.forEach(({ comment, task }) => {
                 const userName = this.getUserName(comment.userId);
                 const userInitial = userName.charAt(0).toUpperCase();
                 const commentDate = this.formatFullDate(comment.createdAt);
@@ -1396,15 +1405,24 @@ class KanbanBoard {
     saveTask() {
         const form = document.getElementById('task-form');
         const taskId = form.dataset.taskId;
-        
-        // Get milestone value
-        const milestoneSelect = document.getElementById('task-milestone');
+
+        // Get milestone value from input + datalist
+        const milestoneInput = document.getElementById('task-milestone');
         let milestone = null;
-        if (milestoneSelect && milestoneSelect.value) {
-            const selectedOption = milestoneSelect.selectedOptions[0];
+        if (milestoneInput && milestoneInput.value) {
+            const val = milestoneInput.value.trim();
+            // Try to find the matching datalist option to get the number
+            const datalist = document.getElementById('milestone-list');
+            let milestoneNumber = null;
+            if (datalist) {
+                const matchingOption = datalist.querySelector(`option[value="${val}"]`);
+                if (matchingOption) {
+                    milestoneNumber = parseInt(matchingOption.dataset.number) || null;
+                }
+            }
             milestone = {
-                name: milestoneSelect.value,
-                number: parseInt(selectedOption.dataset.number) || null
+                name: val,
+                number: milestoneNumber
             };
         }
 
@@ -1425,7 +1443,7 @@ class KanbanBoard {
             const parsed = parseInt(parentIssueInput.value);
             if (!isNaN(parsed)) parentIssueId = parsed;
         }
-        
+
         // Get form values directly
         const taskData = {
             emoji: document.getElementById('task-emoji').value,
@@ -1498,55 +1516,57 @@ class KanbanBoard {
         select.value = currentValue;
     }
 
-    // GitHub Milestone Integration
+    // GitHub Milestone Integration (with local fallback)
     async populateMilestoneDropdown() {
-        const select = document.getElementById('task-milestone');
-        if (!select) return;
-        
-        const currentValue = select.value;
-        
+        const input = document.getElementById('task-milestone');
+        if (!input) return;
+
+        const currentValue = input.value;
+        const datalist = document.getElementById('milestone-list');
+        if (!datalist) return;
+
         // Clear existing options except the first one
-        select.innerHTML = '<option value="">No Milestone</option>';
-        
-        // Disable if GitHub integration not active
+        datalist.innerHTML = '<option value="">No Milestone</option>';
+
+        // If GitHub not connected, allow custom milestone entry
         if (!window.githubBoardsUI || !window.githubBoardsUI.githubBoards.isConnected()) {
-            select.disabled = true;
-            select.title = 'Connect to GitHub to use milestones';
+            input.disabled = false;
+            input.title = 'Enter milestone name manually (will sync when GitHub connected)';
             return;
         }
-        
+
         const repo = window.githubBoardsUI.githubBoards.getSelectedRepo();
         if (!repo) {
-            select.disabled = true;
-            select.title = 'Select a repository to use milestones';
+            input.disabled = false;
+            input.title = 'Select a repository to use milestones';
             return;
         }
-        
-        select.disabled = false;
-        select.title = '';
-        
+
+        input.disabled = false;
+        input.title = '';
+
         try {
             const milestones = await window.githubBoardsUI.githubBoards.api.getRepoMilestones(
                 repo.owner.login,
                 repo.name
             );
-            
+
             milestones.forEach(ms => {
                 const option = document.createElement('option');
                 option.value = ms.title;
                 option.textContent = ms.title;
-                // Store number as data attribute
+                // Store number as data attribute on the option for later retrieval
                 option.dataset.number = ms.number;
-                select.appendChild(option);
+                datalist.appendChild(option);
             });
-            
+
             // Restore selection if editing
-            select.value = currentValue;
-            
+            input.value = currentValue;
+
         } catch (error) {
             console.warn('Failed to load milestones:', error);
-            select.disabled = true;
-            select.title = 'Failed to load milestones';
+            // Still allow manual entry
+            input.title = 'Failed to load — you can still type a milestone';
         }
     }
 
@@ -1604,76 +1624,319 @@ class KanbanBoard {
         }
     }
 
-    // GitHub Labels Integration
+    // GitHub Labels Integration - Populate custom label picker
     async populateLabelsDropdown() {
-        const select = document.getElementById('task-labels');
-        if (!select) return;
+        const container = document.getElementById('label-select-container');
+        const trigger = document.getElementById('label-select-trigger');
+        const dropdown = document.getElementById('label-select-dropdown');
+        const optionsContainer = document.getElementById('label-options');
+        const placeholder = trigger?.querySelector('.label-select-placeholder');
 
-        const currentSelection = Array.from(select.selectedOptions).map(opt => opt.value);
+        if (!container || !trigger || !dropdown || !optionsContainer) return;
 
-        // Clear existing options except the first placeholder
-        select.innerHTML = '<option value="">Select labels...</option>';
+        // Close dropdown if open
+        dropdown.style.display = 'none';
+        trigger.classList.remove('active');
 
-        // Disable if GitHub integration not active
-        if (!window.githubBoardsUI || !window.githubBoardsUI.githubBoards.isConnected()) {
-            select.disabled = true;
-            select.title = 'Connect to GitHub to use labels';
-            return;
+        // Clear any existing selection before rebuilding
+        const selectedContainer = document.getElementById('selected-labels');
+        if (selectedContainer) selectedContainer.innerHTML = '';
+
+        // Default GitHub labels fallback
+        const defaultLabels = [
+            'documentation', 'duplicate', 'enhancement', 'good first issue',
+            'help wanted', 'invalid', 'question', 'wontfix'
+        ];
+
+        let labels = [];
+
+        // If GitHub integration active and repo selected, fetch real labels
+        if (window.githubBoardsUI && window.githubBoardsUI.githubBoards.isConnected()) {
+            const repo = window.githubBoardsUI.githubBoards.getSelectedRepo();
+            if (repo) {
+                try {
+                    labels = await window.githubBoardsUI.githubBoards.api.getRepoLabels(
+                        repo.owner.login,
+                        repo.name
+                    );
+                    // Sort alphabetically
+                    labels.sort((a, b) => a.name.localeCompare(b.name));
+                    // Cache colors
+                    this.labelColorMap = this.labelColorMap || {};
+                    labels.forEach(label => {
+                        this.labelColorMap[label.name] = label.color;
+                    });
+                } catch (error) {
+                    console.warn('Failed to load labels, using defaults:', error);
+                    labels = defaultLabels.map(name => ({ name, color: this.getLabelColor(name) }));
+                }
+            } else {
+                labels = defaultLabels.map(name => ({ name, color: this.getLabelColor(name) }));
+            }
+        } else {
+            labels = defaultLabels.map(name => ({ name, color: this.getLabelColor(name) }));
         }
 
-        const repo = window.githubBoardsUI.githubBoards.getSelectedRepo();
-        if (!repo) {
-            select.disabled = true;
-            select.title = 'Select a repository to use labels';
-            return;
+        // Build options HTML
+        optionsContainer.innerHTML = '';
+        labels.forEach(label => {
+            const option = document.createElement('div');
+            option.className = 'label-option';
+            option.dataset.value = label.name;
+            option.dataset.color = label.color;
+            option.setAttribute('role', 'option');
+            option.setAttribute('tabindex', '-1');
+            option.innerHTML = `
+                <span class="label-color-dot" style="background-color: #${label.color}"></span>
+                <span class="label-name">${this.escapeHtml(label.name)}</span>
+                <span class="label-check"><i class="fas fa-check"></i></span>
+            `;
+            optionsContainer.appendChild(option);
+        });
+
+        // Set up event listeners for the label picker
+        this.setupLabelPicker(trigger, dropdown, optionsContainer, label => this.onLabelToggle(label));
+    }
+
+    onLabelToggle(labelName) {
+        // This is a callback hook if needed for external sync
+        // Currently handled directly in setupLabelPicker
+    }
+
+    // Setup label picker interactions (dropdown toggle, selection)
+    setupLabelPicker(trigger, dropdown, optionsContainer, onToggle) {
+        let isOpen = false;
+        let focusedIndex = -1;
+
+        const toggleDropdown = (open) => {
+            isOpen = open !== undefined ? open : !isOpen;
+            if (isOpen) {
+                dropdown.style.display = 'block';
+                trigger.classList.add('active');
+                trigger.setAttribute('aria-expanded', 'true');
+                // Focus first option
+                const firstOption = optionsContainer.querySelector('.label-option');
+                firstOption?.focus();
+            } else {
+                dropdown.style.display = 'none';
+                trigger.classList.remove('active');
+                trigger.setAttribute('aria-expanded', 'false');
+                focusedIndex = -1;
+            }
+        };
+
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleDropdown();
+        });
+
+        // Keyboard support for trigger
+        trigger.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                toggleDropdown(true);
+            }
+            if (e.key === 'Escape' && isOpen) {
+                e.preventDefault();
+                toggleDropdown(false);
+                trigger.focus();
+            }
+        });
+
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (isOpen && !dropdown.contains(e.target) && !trigger.contains(e.target)) {
+                toggleDropdown(false);
+            }
+        });
+
+        // Close on Escape inside dropdown
+        dropdown.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                toggleDropdown(false);
+                trigger.focus();
+            }
+        });
+
+        // Option selection (mouse)
+        optionsContainer.addEventListener('click', (e) => {
+            const option = e.target.closest('.label-option');
+            if (!option) return;
+            const labelName = option.dataset.value;
+            const isSelected = option.classList.contains('selected');
+            if (isSelected) {
+                option.classList.remove('selected');
+                option.setAttribute('aria-selected', 'false');
+                this.removeLabelFromSelection(labelName);
+            } else {
+                option.classList.add('selected');
+                option.setAttribute('aria-selected', 'true');
+                this.addLabelToSelection(labelName, option.dataset.color);
+            }
+            onToggle(labelName);
+            option.focus();
+        });
+
+        // Keyboard navigation within dropdown
+        optionsContainer.addEventListener('keydown', (e) => {
+            const options = Array.from(optionsContainer.querySelectorAll('.label-option:not([style*="display: none"])'));
+            if (options.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                focusedIndex = Math.min(focusedIndex + 1, options.length - 1);
+                options[focusedIndex]?.focus();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                focusedIndex = Math.max(focusedIndex - 1, 0);
+                options[focusedIndex]?.focus();
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const activeOption = options[focusedIndex];
+                if (activeOption) {
+                    const labelName = activeOption.dataset.value;
+                    const isSelected = activeOption.classList.contains('selected');
+                    if (isSelected) {
+                        activeOption.classList.remove('selected');
+                        activeOption.setAttribute('aria-selected', 'false');
+                        this.removeLabelFromSelection(labelName);
+                    } else {
+                        activeOption.classList.add('selected');
+                        activeOption.setAttribute('aria-selected', 'true');
+                        this.addLabelToSelection(labelName, activeOption.dataset.color);
+                    }
+                    onToggle(labelName);
+                }
+            }
+        });
+    }
+
+    // Add label to current selection (used by label picker)
+    addLabelToSelection(labelName, color) {
+        const selectedContainer = document.getElementById('selected-labels');
+        const trigger = document.getElementById('label-select-trigger');
+        const placeholder = trigger?.querySelector('.label-select-placeholder');
+        if (!selectedContainer) return;
+
+        // Check if already exists
+        if (selectedContainer.querySelector(`[data-label="${labelName}"]`)) return;
+
+        const badge = document.createElement('span');
+        badge.className = 'selected-label-badge';
+        badge.dataset.label = labelName;
+        badge.style.backgroundColor = `#${color}`;
+        badge.style.color = this.getLabelTextColor(`#${color}`);
+        badge.innerHTML = `
+            ${this.escapeHtml(labelName)}
+            <span class="selected-label-remove" data-label="${this.escapeHtml(labelName)}">&times;</span>
+        `;
+        selectedContainer.appendChild(badge);
+
+        // Dim placeholder when labels are selected (keep it visible)
+        if (placeholder) placeholder.style.opacity = '0.3';
+
+        // Remove on click of X
+        badge.querySelector('.selected-label-remove').addEventListener('click', (e) => {
+            e.stopPropagation();
+            badge.remove();
+            // If no more selected labels, restore placeholder opacity
+            if (selectedContainer.children.length === 0 && placeholder) {
+                placeholder.style.opacity = '1';
+            }
+            // Also uncheck in dropdown if open
+            const dropdown = document.getElementById('label-select-dropdown');
+            if (dropdown && dropdown.style.display === 'block') {
+                const option = dropdown.querySelector(`.label-option[data-value="${labelName}"]`);
+                if (option) {
+                    option.classList.remove('selected');
+                    option.setAttribute('aria-selected', 'false');
+                }
+            }
+        });
+    }
+
+    // Remove label from current selection
+    removeLabelFromSelection(labelName) {
+        const selectedContainer = document.getElementById('selected-labels');
+        if (!selectedContainer) return;
+        const badge = selectedContainer.querySelector(`[data-label="${labelName}"]`);
+        if (badge) badge.remove();
+    }
+
+    // Get currently selected label names (used by saveTask)
+    getSelectedLabels() {
+        const selectedContainer = document.getElementById('selected-labels');
+        if (!selectedContainer) return [];
+        return Array.from(selectedContainer.children).map(badge => badge.dataset.label);
+    }
+
+    // Set selected labels when editing a task
+    setSelectedLabels(labelArray) {
+        const selectedContainer = document.getElementById('selected-labels');
+        const trigger = document.getElementById('label-select-trigger');
+        const placeholder = trigger?.querySelector('.label-select-placeholder');
+        if (!selectedContainer) return;
+        selectedContainer.innerHTML = '';
+        if (!labelArray || !Array.isArray(labelArray)) return;
+
+        labelArray.forEach(label => {
+            const labelName = typeof label === 'object' ? label.name : label;
+            const color = typeof label === 'object' && label.color ? label.color : this.getLabelColor(labelName);
+            const badge = document.createElement('span');
+            badge.className = 'selected-label-badge';
+            badge.dataset.label = labelName;
+            badge.style.backgroundColor = `#${color}`;
+            badge.style.color = this.getLabelTextColor(`#${color}`);
+            badge.innerHTML = `
+                ${this.escapeHtml(labelName)}
+                <span class="selected-label-remove" data-label="${this.escapeHtml(labelName)}">&times;</span>
+            `;
+            selectedContainer.appendChild(badge);
+            badge.querySelector('.selected-label-remove').addEventListener('click', (e) => {
+                e.stopPropagation();
+                badge.remove();
+                // Restore placeholder opacity when no labels remain
+                if (selectedContainer.children.length === 0 && placeholder) {
+                    placeholder.style.opacity = '1';
+                }
+                // Also uncheck in dropdown if open
+                const dropdown = document.getElementById('label-select-dropdown');
+                if (dropdown && dropdown.style.display === 'block') {
+                    const option = dropdown.querySelector(`.label-option[data-value="${labelName}"]`);
+                    if (option) {
+                        option.classList.remove('selected');
+                        option.setAttribute('aria-selected', 'false');
+                    }
+                }
+            });
+        });
+
+        // Dim placeholder if any labels selected
+        if (placeholder && labelArray.length > 0) {
+            placeholder.style.opacity = '0.3';
         }
 
-        select.disabled = false;
-        select.title = 'Hold Ctrl/Cmd to select multiple';
-
-        try {
-            const labels = await window.githubBoardsUI.githubBoards.api.getRepoLabels(
-                repo.owner.login,
-                repo.name
-            );
-
-            // Sort labels alphabetically for better UX
-            labels.sort((a, b) => a.name.localeCompare(b.name));
-
-            // Update labelColorMap cache with GitHub label colors
-            this.labelColorMap = this.labelColorMap || {};
-            labels.forEach(label => {
-                this.labelColorMap[label.name] = label.color;
+        // Also update dropdown options selected state if dropdown is rendered
+        const optionsContainer = document.getElementById('label-options');
+        if (optionsContainer) {
+            labelArray.forEach(label => {
+                const labelName = typeof label === 'object' ? label.name : label;
+                const option = optionsContainer.querySelector(`.label-option[data-value="${labelName}"]`);
+                if (option) {
+                    option.classList.add('selected');
+                    option.setAttribute('aria-selected', 'true');
+                }
             });
-
-            labels.forEach(label => {
-                const option = document.createElement('option');
-                option.value = label.name;
-                option.textContent = label.name;
-                // Store color as data attribute for styling
-                option.dataset.color = label.color;
-                select.appendChild(option);
-            });
-
-            // Restore selection if editing
-            currentSelection.forEach(val => {
-                const option = select.querySelector(`option[value="${val}"]`);
-                if (option) option.selected = true;
-            });
-
-        } catch (error) {
-            console.warn('Failed to load labels:', error);
-            select.disabled = true;
-            select.title = 'Failed to load labels';
         }
     }
 
     getUserName(userId) {
         if (!userId) return 'Unassigned';
-        
+
         // Handle both string and number IDs - localStorage stores as strings
         const userIdNum = typeof userId === 'string' ? parseInt(userId) : userId;
-        
+
         if (window.userManager && window.userManager.users) {
             // Use loose equality to handle string/number mismatch
             const user = window.userManager.users.find(u => u.id == userIdNum);
@@ -1729,17 +1992,17 @@ class KanbanBoard {
                 }
             });
         }
-        
+
         const emailClose = document.getElementById('email-modal-close');
         if (emailClose) {
             emailClose.addEventListener('click', () => this.closeEmailModal());
         }
-        
+
         const emailCancel = document.getElementById('email-cancel-btn');
         if (emailCancel) {
             emailCancel.addEventListener('click', () => this.closeEmailModal());
         }
-        
+
         // Gallery modal listeners
         const galleryModal = document.getElementById('gallery-modal');
         if (galleryModal) {
@@ -1749,17 +2012,17 @@ class KanbanBoard {
                 }
             });
         }
-        
+
         const galleryClose = document.getElementById('gallery-modal-close');
         if (galleryClose) {
             galleryClose.addEventListener('click', () => this.closeGalleryModal());
         }
-        
+
         // Gallery keyboard navigation
         document.addEventListener('keydown', (e) => {
             const galleryModal = document.getElementById('gallery-modal');
             if (!galleryModal || !galleryModal.classList.contains('active')) return;
-            
+
             if (e.key === 'ArrowLeft') {
                 this.galleryPrev();
             } else if (e.key === 'ArrowRight') {
