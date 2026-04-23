@@ -73,10 +73,10 @@ class DatabaseManager {
                 this.showNotification(`Saved ${savedCount} tasks to ${repo.fullName}`, 'success');
             }
 
-            // Save local board state after successful sync
-            if (this.boardManager) {
-                this.boardManager.saveCurrentBoard();
-            }
+             // Save local board state after successful sync
+             if (this.boardManager) {
+                 this.boardManager.saveBoard();
+             }
 
             return savedCount > 0;
         } catch (error) {

@@ -296,7 +296,7 @@ class KanbanApp {
 let app;
 
 document.addEventListener('DOMContentLoaded', () => {
-    app = new SFXGeneratorApp();
+    app = new KanbanApp();
     app.init();
     
     // Mark as initialized after everything is set up

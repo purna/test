@@ -13,7 +13,47 @@ class KanbanBoard {
         };
         // Cache for GitHub label colors: { labelName: 'hexcolor' }
         this.labelColorMap = {};
+        this.iconStyle = localStorage.getItem('kanban-icon-style') || 'emoji'; // 'emoji' or 'fontawesome'
         this.init();
+    }
+
+    // Set icon style and re-render board
+    setIconStyle(style) {
+        this.iconStyle = style;
+        localStorage.setItem('kanban-icon-style', style);
+        this.renderBoard();
+    }
+
+    // Get icon for a type based on current icon style
+    getIcon(type) {
+        const iconMap = {
+            pencil: { emoji: '✏️', fontawesome: 'fas fa-pencil-alt' },
+            trash: { emoji: '🗑️', fontawesome: 'fas fa-trash' },
+            image: { emoji: '🖼️', fontawesome: 'fas fa-image' },
+            video: { emoji: '🎬', fontawesome: 'fas fa-video' },
+            music: { emoji: '🎵', fontawesome: 'fas fa-music' },
+            file: { emoji: '📄', fontawesome: 'fas fa-file' },
+            link: { emoji: '🔗', fontawesome: 'fas fa-link' },
+            user: { emoji: '👤', fontawesome: 'fas fa-user' },
+            edit: { emoji: '✏️', fontawesome: 'fas fa-edit' },
+            check: { emoji: '✅', fontawesome: 'fas fa-check' },
+            clipboard: { emoji: '📋', fontawesome: 'fas fa-clipboard-list' },
+            cog: { emoji: '⚙️', fontawesome: 'fas fa-cog' },
+            save: { emoji: '💾', fontawesome: 'fas fa-save' },
+            export: { emoji: '📤', fontawesome: 'fas fa-file-export' },
+            import: { emoji: '📥', fontawesome: 'fas fa-file-import' },
+            plus: { emoji: '➕', fontawesome: 'fas fa-plus' },
+            undo: { emoji: '↩️', fontawesome: 'fas fa-undo' },
+            close: { emoji: '✖️', fontawesome: 'fas fa-times' },
+            envelope: { emoji: '✉️', fontawesome: 'fas fa-envelope' }
+        };
+
+        const icons = iconMap[type] || iconMap.file;
+        if (this.iconStyle === 'emoji') {
+            return icons.emoji;
+        } else {
+            return `<i class="${icons.fontawesome}"></i>`;
+        }
     }
 
     /**
@@ -270,13 +310,28 @@ class KanbanBoard {
         if (task.attachments && task.attachments.length > 0) {
             attachmentsHTML = '<div class="task-attachments">';
             task.attachments.forEach((att, index) => {
-                const icon = this.getAttachmentIcon(att.type);
                 const isImage = att.type === 'image';
                 const preview = isImage ? `<img src="${att.url}" alt="${att.name}" onerror="this.style.display='none'">` : '';
+                
+                // Use appropriate icon based on setting
+                let iconHtml;
+                if (this.iconStyle === 'emoji') {
+                    const iconMap = {
+                        image: '🖼️',
+                        video: '🎬',
+                        audio: '🎵',
+                        document: '📄',
+                        link: '🔗'
+                    };
+                    iconHtml = iconMap[att.type] || '📄';
+                } else {
+                    const iconClass = this.getAttachmentIcon(att.type);
+                    iconHtml = `<i class="fas ${iconClass}"></i>`;
+                }
 
                 attachmentsHTML += `
                     <div class="attachment-item" onclick="kanbanBoard.openGallery('${task.id}', ${index})">
-                        <div class="attachment-icon">${preview || '<i class="fas ' + icon + '"></i>'}</div>
+                        <div class="attachment-icon">${preview || iconHtml}</div>
                         <div class="attachment-name">${att.name || att.url}</div>
                     </div>
                 `;
@@ -306,10 +361,10 @@ class KanbanBoard {
                 <div class="task-created-date">Created: ${createdDate}</div>
                 <div class="task-actions">
                     <button class="task-action-btn edit" data-action="edit" title="Edit Task">
-                        <i class="fas fa-pencil-alt"></i>
+                        ${this.getIcon('pencil')}
                     </button>
                     <button class="task-action-btn delete" data-action="delete" title="Delete Task">
-                        <i class="fas fa-trash"></i>
+                        ${this.getIcon('trash')}
                     </button>
                 </div>
             </div>
@@ -453,9 +508,9 @@ class KanbanBoard {
             </div>`;
         } else if (isAudio) {
             // Audio player
-            html = `<div class="gallery-preview">
+            html = `<div class="gallery-review">
                 <div class="gallery-audio-player">
-                    <div class="audio-icon"><i class="fas fa-music"></i></div>
+                    <div class="audio-icon">${this.getIcon('music')}</div>
                     <audio controls style="width: 100%;">
                         <source src="${att.url}">
                         Your browser does not support the audio tag.
@@ -468,9 +523,9 @@ class KanbanBoard {
             </div>`;
         } else if (isImage) {
             // Image preview
-            html = `<div class="gallery-preview">
-                <div class="gallery-image-preview">
-                    <img src="${att.url}" alt="${this.escapeHtml(att.name)}" onerror="this.parentHTML='<div class=\"gallery-error\"><i class=\"fas fa-image\"></i><p>Image failed to load</p></div>';">
+            html = `<div class="gallery-review">
+                <div class="gallery-image-review">
+                    <img src="${att.url}" alt="${this.escapeHtml(att.name)}" onerror="this.parentHTML='<div class=\"gallery-error\">${this.getIcon('image')}<p>Image failed to load</p></div>';">
                 </div>
                 <div class="gallery-info">
                     <h4>${this.escapeHtml(att.name || 'Image')}</h4>
@@ -479,9 +534,9 @@ class KanbanBoard {
             </div>`;
         } else {
             // Generic file link
-            html = `<div class="gallery-preview">
-                <div class="gallery-generic-preview">
-                    <i class="fas fa-file"></i>
+            html = `<div class="gallery-review">
+                <div class="gallery-generic-review">
+                    ${this.getIcon('file')}
                     <p>${this.escapeHtml(att.name || att.url)}</p>
                 </div>
                 <div class="gallery-info">
@@ -977,15 +1032,15 @@ class KanbanBoard {
                         <span class="comment-date">${commentDate}</span>
                     </div>
                     <div class="comment-assignee">
-                        <i class="fas fa-user"></i> Task assigned to: ${this.escapeHtml(commentAssignee)}
+                        ${this.getIcon('user')} Task assigned to: ${this.escapeHtml(commentAssignee)}
                     </div>
                     <div class="comment-text">${this.escapeHtml(comment.text)}</div>
                     <div class="comment-actions">
                         <button type="button" class="btn btn-sm edit-comment-btn" data-comment-id="${comment.id}">
-                            <i class="fas fa-edit"></i> Edit
+                            ${this.getIcon('edit')} Edit
                         </button>
                         <button type="button" class="btn btn-sm delete-comment-btn" data-comment-id="${comment.id}">
-                            <i class="fas fa-trash"></i> Delete
+                            ${this.getIcon('trash')} Delete
                         </button>
                     </div>
                 </div>
@@ -1401,7 +1456,7 @@ class KanbanBoard {
                             <span class="message-date">${commentDate}</span>
                         </div>
                         <div class="message-task">
-                            <i class="fas fa-clipboard-list"></i> ${this.escapeHtml(task.title)}
+                            ${this.getIcon('clipboard')} ${this.escapeHtml(task.title)}
                         </div>
                         <div class="message-text">${this.escapeHtml(comment.text)}</div>
                     </div>

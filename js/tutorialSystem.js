@@ -1,373 +1,494 @@
 /**
- * Tutorial System
+ * TutorialSystem — pixelKanban
  *
- * Handles the display and interaction of tutorial steps
+ * Self-contained onboarding tutorial system.
+ * Depends on: TutorialConfig (tutorialConfig.js), window.notifications (notifications.js)
+ *
+ * Usage:
+ *   const tutorialSystem = new TutorialSystem();
+ *   tutorialSystem.init();
+ *   tutorialSystem.startTutorial('main');
  */
 
 class TutorialSystem {
-    constructor(app) {
-        this.app = app;
-        this.config = app.tutorialConfig;
-        this.currentTutorialStep = null;
-        this.tutorialElement = null;
-        this.overlayElement = null;
-        this.isInitialized = false;
+    constructor() {
+        this.config     = new TutorialConfig();
+        this._box       = null;   // floating tooltip element
+        this._overlay   = null;   // dim overlay
+        this._styleTag  = null;   // injected <style>
+        this._resizeRAF = null;
     }
+
+    // ── Public ──────────────────────────────────────────────────────────────
 
     init() {
-        // Create tutorial elements
-        this.createTutorialElements();
-
-        // Add tutorial toggle to settings
-        this.addTutorialSetting();
-
-        // Initialize event listeners
-        this.setupEventListeners();
-
-        // Add resize handler
-        window.addEventListener('resize', () => this.handleResize());
-
-        this.isInitialized = true;
-    }
-
-    createTutorialElements() {
-        // Create overlay
-        this.overlayElement = document.createElement('div');
-        this.overlayElement.id = 'tutorial-overlay';
-        document.body.appendChild(this.overlayElement);
-
-        // Create tutorial container
-        this.tutorialElement = document.createElement('div');
-        this.tutorialElement.id = 'tutorial-container';
-        document.body.appendChild(this.tutorialElement);
-
-        // Add tutorial content structure
-        this.tutorialElement.innerHTML = `
-            <div id="tutorial-header">
-                <h3 id="tutorial-heading"></h3>
-                <button id="tutorial-close">×</button>
-            </div>
-            <div id="tutorial-content"></div>
-            <div id="tutorial-controls">
-                <div id="tutorial-buttons">
-                    <button id="tutorial-prev" class="tutorial-btn" style="display: none;">Previous</button>
-                    <button id="tutorial-next" class="tutorial-btn">Next</button>
-                </div>
-                <div id="tutorial-progress-dots"></div>
-            </div>
-        `;
-    }
-
-    addTutorialSetting() {
-        // Add tutorial toggle to settings panel
-        const settingsPanel = document.getElementById('panel-settings');
-        if (settingsPanel) {
-            const tutorialSettingHTML = `
-                <div class="control-section">
-                    <label class="section-label">Tutorial</label>
-                    <div class="control-group checkbox-group">
-                        <input type="checkbox" id="enableTutorialsSettings" checked>
-                        <label for="enableTutorialsSettings">Show Tutorials</label>
-                    </div>
-                    <button id="startTutorialBtn" class="full-btn" style="margin-top: 12px;">
-                        <i class="fas fa-graduation-cap"></i> Start Tutorial
-                    </button>
-                </div>
-            `;
-
-            // Insert before storage section
-            const storageSection = settingsPanel.querySelector('.control-section:last-child');
-            if (storageSection) {
-                storageSection.insertAdjacentHTML('beforebegin', tutorialSettingHTML);
-            } else {
-                settingsPanel.insertAdjacentHTML('beforeend', tutorialSettingHTML);
-            }
-
-            // Add event listeners for tutorial settings
-            const enableTutorialsCheckbox = document.getElementById('enableTutorialsSettings');
-            const startTutorialBtn = document.getElementById('startTutorialBtn');
-
-            if (enableTutorialsCheckbox) {
-                // Set default to enabled (checked)
-                enableTutorialsCheckbox.checked = true;
-                this.app.tutorialConfig.tutorials.main.enabled = true;
-
-                enableTutorialsCheckbox.addEventListener('change', (e) => {
-                    this.app.tutorialConfig.tutorials.main.enabled = e.target.checked;
-                    if (!e.target.checked && this.config.isTutorialActive()) {
-                        this.hideTutorial();
-                    }
-                });
-            }
-
-            if (startTutorialBtn) {
-                startTutorialBtn.addEventListener('click', () => {
-                    this.startTutorial('main');
-                });
-            }
-        }
-    }
-
-    setupEventListeners() {
-        // Tutorial control buttons
-        const closeBtn = document.getElementById('tutorial-close');
-        const nextBtn = document.getElementById('tutorial-next');
-        const skipBtn = document.getElementById('tutorial-skip');
-        const prevBtn = document.getElementById('tutorial-prev');
-
-        if (closeBtn) closeBtn.addEventListener('click', () => this.hideTutorial());
-        if (nextBtn) nextBtn.addEventListener('click', () => this.nextStep());
-        if (skipBtn) skipBtn.addEventListener('click', () => this.hideTutorial());
-        if (prevBtn) prevBtn.addEventListener('click', () => this.prevStep());
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (!this.config.isTutorialActive()) return;
-
-            // Escape to close tutorial
-            if (e.key === 'Escape') {
-                this.hideTutorial();
-            }
-            // Right arrow for next
-            else if (e.key === 'ArrowRight') {
-                this.nextStep();
-            }
-            // Left arrow for previous
-            else if (e.key === 'ArrowLeft') {
-                this.prevStep();
-            }
+        this._injectStyles();
+        this._buildDOM();
+        this._bindEvents();
+        this._addSettingsTrigger();
+        window.addEventListener('resize', () => {
+            cancelAnimationFrame(this._resizeRAF);
+            this._resizeRAF = requestAnimationFrame(() => this._reposition());
         });
     }
 
-    startTutorial(tutorialId) {
-        // Check if tutorials are enabled
-        const enableTutorialsCheckbox = document.getElementById('enableTutorialsSettings');
-        if (enableTutorialsCheckbox && !enableTutorialsCheckbox.checked) {
-            this.app.notifications.showNotification('Tutorials are disabled in settings', 'info');
+    startTutorial(tutorialId = 'main') {
+        // Respect the "Show Tutorials" checkbox if present
+        const cb = document.getElementById('enableTutorialsSettings');
+        if (cb && !cb.checked) {
+            this._notify('Tutorials are disabled in settings.', 'info');
             return;
         }
-
         this.config.startTutorial(tutorialId);
-        this.showCurrentStep();
-    }
-
-    showCurrentStep() {
-        const step = this.config.getCurrentStep();
-        if (!step) {
-            this.hideTutorial();
-            return;
-        }
-
-        this.currentTutorialStep = step;
-
-        // Position tutorial based on step configuration
-        this.positionTutorial(step);
-
-        // Update content
-        const headingElement = document.getElementById('tutorial-heading');
-        const contentElement = document.getElementById('tutorial-content');
-        if (headingElement) headingElement.textContent = step.heading;
-        if (contentElement) contentElement.textContent = step.content;
-
-        // Show/hide previous button
-        const prevBtn = document.getElementById('tutorial-prev');
-        if (prevBtn) {
-            prevBtn.style.display = this.config.currentStep > 0 ? 'inline-block' : 'none';
-        }
-
-        // Show tutorial
-        this.tutorialElement.style.display = 'block';
-        this.overlayElement.style.display = 'block';
-
-        // Update progress dots
-        this.updateProgressDots();
-
-        // Highlight target element if it exists
-        this.highlightTargetElement(step.elementId);
-
-        // Add directional arrow based on arrowPosition config
-        this.addDirectionalArrow(step.arrowPosition || step.position, step.arrowPositionOverride);
-    }
-
-    positionTutorial(step) {
-        const targetElement = document.getElementById(step.elementId);
-        if (!targetElement || !this.tutorialElement) return;
-
-        const targetRect = targetElement.getBoundingClientRect();
-        const tutorialRect = this.tutorialElement.getBoundingClientRect();
-
-        // Get margin override from config or use default
-        const margin = step.marginOverride ? parseInt(step.marginOverride) : 10;
-        let top, left;
-
-        switch(step.position) {
-            case 'top':
-                top = targetRect.top - tutorialRect.height - margin;
-                left = targetRect.left + (targetRect.width / 2) - (tutorialRect.width / 2);
-                break;
-
-            case 'bottom':
-                top = targetRect.bottom + margin;
-                left = targetRect.left + (targetRect.width / 2) - (tutorialRect.width / 2);
-                break;
-
-            case 'left':
-                top = targetRect.top + (targetRect.height / 2) - (tutorialRect.height / 2);
-                left = targetRect.left - tutorialRect.width - margin;
-                break;
-
-            case 'right':
-                top = targetRect.top + (targetRect.height / 2) - (tutorialRect.height / 2);
-                left = targetRect.right + margin;
-                break;
-
-            case 'center':
-                top = window.innerHeight / 2 - tutorialRect.height / 2;
-                left = window.innerWidth / 2 - tutorialRect.width / 2;
-                break;
-
-            default:
-                // Default to right position
-                top = targetRect.top + (targetRect.height / 2) - (tutorialRect.height / 2);
-                left = targetRect.right + margin;
-        }
-
-        // Ensure tutorial stays within viewport
-        top = Math.max(10, Math.min(top, window.innerHeight - tutorialRect.height - 10));
-        left = Math.max(10, Math.min(left, window.innerWidth - tutorialRect.width - 10));
-
-        this.tutorialElement.style.top = top + 'px';
-        this.tutorialElement.style.left = left + 'px';
-    }
-
-    highlightTargetElement(elementId) {
-        // Remove any existing highlights
-        const existingHighlights = document.querySelectorAll('.tutorial-highlight');
-        existingHighlights.forEach(el => el.classList.remove('tutorial-highlight'));
-
-        // Add highlight to target element
-        const targetElement = document.getElementById(elementId);
-        if (targetElement) {
-            targetElement.classList.add('tutorial-highlight');
-
-            // Add highlight style if not already present
-            if (!document.getElementById('tutorial-highlight-style')) {
-                const style = document.createElement('style');
-                style.id = 'tutorial-highlight-style';
-                style.textContent = `
-                    .tutorial-highlight {
-                        position: relative;
-                        z-index: 9999;
-                    }
-                    .tutorial-highlight::after {
-                        content: '';
-                        position: absolute;
-                        top: -4px;
-                        left: -4px;
-                        right: -4px;
-                        bottom: -4px;
-                        border: 2px solid var(--accent-primary);
-                        border-radius: 6px;
-                        pointer-events: none;
-                        animation: pulse 2s infinite;
-                        z-index: -1;
-                    }
-                    @keyframes pulse {
-                        0% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.4); }
-                        70% { box-shadow: 0 0 0 10px rgba(0, 255, 65, 0); }
-                        100% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-        }
-    }
-
-    nextStep() {
-        const nextStep = this.config.nextStep();
-        if (nextStep) {
-            this.showCurrentStep();
-        } else {
-            // Tutorial complete
-            this.hideTutorial();
-            this.app.notifications.showNotification('Tutorial completed!', 'success');
-        }
-    }
-
-    prevStep() {
-        const prevStep = this.config.prevStep();
-        if (prevStep) {
-            this.showCurrentStep();
-        }
+        this._showStep();
     }
 
     hideTutorial() {
-        this.tutorialElement.style.display = 'none';
-        this.overlayElement.style.display = 'none';
         this.config.stopTutorial();
-
-        // Remove highlights
-        const existingHighlights = document.querySelectorAll('.tutorial-highlight');
-        existingHighlights.forEach(el => el.classList.remove('tutorial-highlight'));
-
-        // Remove directional arrow
-        const existingArrow = document.querySelector('.tutorial-arrow');
-        if (existingArrow) {
-            existingArrow.remove();
-        }
+        this._hide();
     }
 
-    // Update progress dots to show current step
-    updateProgressDots() {
-        const dotsContainer = document.getElementById('tutorial-progress-dots');
-        if (!dotsContainer) return;
+    // ── DOM construction ────────────────────────────────────────────────────
 
-        // Clear existing dots
-        dotsContainer.innerHTML = '';
+    _buildDOM() {
+        // Dim overlay (click to close)
+        this._overlay = document.createElement('div');
+        this._overlay.id = 'pkb-tutorial-overlay';
+        this._overlay.addEventListener('click', () => this.hideTutorial());
+        document.body.appendChild(this._overlay);
 
-        // Get current tutorial and steps
-        const tutorial = this.config.getTutorial(this.config.currentTutorial);
-        if (!tutorial || !tutorial.steps || tutorial.steps.length === 0) return;
+        // Floating tooltip box
+        this._box = document.createElement('div');
+        this._box.id = 'pkb-tutorial-box';
+        this._box.innerHTML = `
+            <div class="pkb-tut-header">
+                <span class="pkb-tut-step-badge"></span>
+                <h3 class="pkb-tut-heading"></h3>
+                <button class="pkb-tut-close" aria-label="Close tutorial">×</button>
+            </div>
+            <p class="pkb-tut-content"></p>
+            <div class="pkb-tut-footer">
+                <div class="pkb-tut-dots"></div>
+                <div class="pkb-tut-actions">
+                    <button class="pkb-tut-btn pkb-tut-prev">← Back</button>
+                    <button class="pkb-tut-btn pkb-tut-next primary">Next →</button>
+                </div>
+            </div>
+            <div class="pkb-tut-arrow"></div>
+        `;
+        document.body.appendChild(this._box);
+    }
 
-        // Create dots for each step
-        tutorial.steps.forEach((step, index) => {
-            const dot = document.createElement('div');
-            dot.className = 'tutorial-progress-dot';
-            if (index === this.config.currentStep) {
-                dot.classList.add('active');
-            }
-            dotsContainer.appendChild(dot);
+    // ── Event wiring ────────────────────────────────────────────────────────
+
+    _bindEvents() {
+        this._box.querySelector('.pkb-tut-close').addEventListener('click', () => this.hideTutorial());
+        this._box.querySelector('.pkb-tut-next').addEventListener('click', () => this._next());
+        this._box.querySelector('.pkb-tut-prev').addEventListener('click', () => this._prev());
+
+        document.addEventListener('keydown', (e) => {
+            if (!this.config.isTutorialActive()) return;
+            if (e.key === 'Escape')      this.hideTutorial();
+            if (e.key === 'ArrowRight')  this._next();
+            if (e.key === 'ArrowLeft')   this._prev();
         });
     }
 
-    // Add directional arrow to tutorial box
-    addDirectionalArrow(position, arrowPositionOverride) {
-        // Remove any existing arrow
-        const existingArrow = document.querySelector('.tutorial-arrow');
-        if (existingArrow) {
-            existingArrow.remove();
-        }
+    _addSettingsTrigger() {
+        // Inject a "Start Tutorial" button into the settings panel if it exists.
+        // Waits briefly to let settingsManager render the panel first.
+        const tryInject = (attempts = 0) => {
+            const panel = document.getElementById('panel-settings')
+                       || document.querySelector('.settings-panel');
+            if (!panel) {
+                if (attempts < 20) setTimeout(() => tryInject(attempts + 1), 300);
+                return;
+            }
+            if (panel.querySelector('#pkb-start-tutorial-btn')) return; // already added
 
-        // Don't add arrow for center position
-        if (position === 'center') return;
+            const wrap = document.createElement('div');
+            wrap.className = 'control-section';
+            wrap.innerHTML = `
+                <label class="section-label">Tutorial</label>
+                <div class="control-group checkbox-group" style="margin-bottom:10px">
+                    <input type="checkbox" id="enableTutorialsSettings" checked>
+                    <label for="enableTutorialsSettings">Show tutorials on startup</label>
+                </div>
+                <button id="pkb-start-tutorial-btn" class="full-btn">
+                    <i class="fas fa-graduation-cap"></i> Restart Tutorial
+                </button>
+            `;
+            panel.appendChild(wrap);
 
-        // Create arrow element
-        const arrow = document.createElement('div');
-        arrow.className = `tutorial-arrow ${position}`;
+            document.getElementById('pkb-start-tutorial-btn')
+                .addEventListener('click', () => this.startTutorial('main'));
 
-        // Add position override class if specified
-        if (arrowPositionOverride && arrowPositionOverride !== 'center') {
-            arrow.classList.add(arrowPositionOverride);
-        }
-
-        // Add to tutorial container
-        this.tutorialElement.appendChild(arrow);
+            document.getElementById('enableTutorialsSettings')
+                .addEventListener('change', (e) => {
+                    this.config.tutorials.main.enabled = e.target.checked;
+                    if (!e.target.checked) this.hideTutorial();
+                });
+        };
+        setTimeout(() => tryInject(), 400);
     }
 
-    // Handle window resize
-    handleResize() {
-        if (this.config.isTutorialActive() && this.currentTutorialStep) {
-            this.positionTutorial(this.currentTutorialStep);
+    // ── Step rendering ──────────────────────────────────────────────────────
+
+    _showStep() {
+        const step = this.config.getCurrentStep();
+        if (!step) { this.hideTutorial(); return; }
+
+        const total   = this.config.totalSteps;
+        const current = this.config.currentStep + 1;
+        const isLast  = current === total;
+
+        // Content
+        this._box.querySelector('.pkb-tut-step-badge').textContent = `${current} / ${total}`;
+        this._box.querySelector('.pkb-tut-heading').textContent    = step.heading;
+        this._box.querySelector('.pkb-tut-content').textContent    = step.content;
+
+        // Prev button
+        const prevBtn = this._box.querySelector('.pkb-tut-prev');
+        prevBtn.style.visibility = current > 1 ? 'visible' : 'hidden';
+
+        // Next / Finish button
+        const nextBtn = this._box.querySelector('.pkb-tut-next');
+        nextBtn.textContent = isLast ? '🎉 Finish' : 'Next →';
+
+        // Progress dots
+        this._renderDots(current - 1, total);
+
+        // Highlight + position
+        this._clearHighlight();
+        const target = this._resolveTarget(step);
+        if (target) target.classList.add('pkb-tut-highlight');
+
+        // Show elements
+        this._overlay.classList.add('active');
+        this._box.classList.add('active');
+
+        // Position after paint so dimensions are known
+        requestAnimationFrame(() => this._positionBox(step, target));
+    }
+
+    _next() {
+        const n = this.config.nextStep();
+        if (n) {
+            this._showStep();
+        } else {
+            this.hideTutorial();
+            this._notify('Tutorial complete! 🎉', 'success');
         }
+    }
+
+    _prev() {
+        if (this.config.prevStep()) this._showStep();
+    }
+
+    _hide() {
+        this._box.classList.remove('active');
+        this._overlay.classList.remove('active');
+        this._clearHighlight();
+        this._box.querySelector('.pkb-tut-arrow').className = 'pkb-tut-arrow';
+    }
+
+    _reposition() {
+        if (!this.config.isTutorialActive()) return;
+        const step = this.config.getCurrentStep();
+        if (step) this._positionBox(step, this._resolveTarget(step));
+    }
+
+    // ── Positioning ─────────────────────────────────────────────────────────
+
+    _resolveTarget(step) {
+        if (step.elementId) return document.getElementById(step.elementId);
+        if (step.selector)  return document.querySelector(step.selector);
+        return null;
+    }
+
+    _positionBox(step, target) {
+        const box  = this._box;
+        const arrow = box.querySelector('.pkb-tut-arrow');
+        arrow.className = 'pkb-tut-arrow'; // reset
+
+        if (!target || step.position === 'center') {
+            // Centre the box
+            box.style.top       = '50%';
+            box.style.left      = '50%';
+            box.style.transform = 'translate(-50%, -50%)';
+            return;
+        }
+
+        box.style.transform = 'none';
+        const tr  = target.getBoundingClientRect();
+        const bw  = box.offsetWidth;
+        const bh  = box.offsetHeight;
+        const gap = (step.marginOverride ?? 12) + 10; // +10 for arrow
+        const vw  = window.innerWidth;
+        const vh  = window.innerHeight;
+        const pad = 12;
+
+        let top, left;
+
+        switch (step.position) {
+            case 'top':
+                top  = tr.top  - bh - gap;
+                left = tr.left + tr.width / 2 - bw / 2;
+                arrow.classList.add('arrow-bottom');
+                break;
+            case 'bottom':
+                top  = tr.bottom + gap;
+                left = tr.left + tr.width / 2 - bw / 2;
+                arrow.classList.add('arrow-top');
+                break;
+            case 'left':
+                top  = tr.top + tr.height / 2 - bh / 2;
+                left = tr.left - bw - gap;
+                arrow.classList.add('arrow-right');
+                break;
+            case 'right':
+            default:
+                top  = tr.top + tr.height / 2 - bh / 2;
+                left = tr.right + gap;
+                arrow.classList.add('arrow-left');
+        }
+
+        // Clamp to viewport
+        left = Math.max(pad, Math.min(left, vw - bw - pad));
+        top  = Math.max(pad, Math.min(top,  vh - bh - pad));
+
+        box.style.top  = top  + 'px';
+        box.style.left = left + 'px';
+
+        // Offset the arrow along its axis to point at the target centre
+        this._offsetArrow(arrow, step.position, target, top, left, bw, bh);
+    }
+
+    _offsetArrow(arrow, position, target, boxTop, boxLeft, boxW, boxH) {
+        const tr = target.getBoundingClientRect();
+
+        if (position === 'top' || position === 'bottom') {
+            const targetCX = tr.left + tr.width / 2;
+            const arrowX   = targetCX - boxLeft;
+            const clamped  = Math.max(20, Math.min(arrowX, boxW - 20));
+            arrow.style.left   = clamped + 'px';
+            arrow.style.top    = '';
+            arrow.style.right  = '';
+            arrow.style.bottom = '';
+        } else {
+            const targetCY = tr.top + tr.height / 2;
+            const arrowY   = targetCY - boxTop;
+            const clamped  = Math.max(20, Math.min(arrowY, boxH - 20));
+            arrow.style.top    = clamped + 'px';
+            arrow.style.left   = '';
+            arrow.style.right  = '';
+            arrow.style.bottom = '';
+        }
+    }
+
+    // ── Progress dots ────────────────────────────────────────────────────────
+
+    _renderDots(activeIndex, total) {
+        const container = this._box.querySelector('.pkb-tut-dots');
+        container.innerHTML = '';
+        for (let i = 0; i < total; i++) {
+            const dot = document.createElement('span');
+            dot.className = 'pkb-tut-dot' + (i === activeIndex ? ' active' : '');
+            dot.addEventListener('click', () => {
+                this.config.currentStep = i;
+                this._showStep();
+            });
+            container.appendChild(dot);
+        }
+    }
+
+    // ── Highlight helpers ────────────────────────────────────────────────────
+
+    _clearHighlight() {
+        document.querySelectorAll('.pkb-tut-highlight')
+            .forEach(el => el.classList.remove('pkb-tut-highlight'));
+    }
+
+    // ── Notification helper ──────────────────────────────────────────────────
+
+    _notify(msg, type = 'info') {
+        if (window.notifications) {
+            window.notifications.showNotification(msg, type);
+        }
+    }
+
+    // ── CSS ──────────────────────────────────────────────────────────────────
+
+    _injectStyles() {
+        if (document.getElementById('pkb-tutorial-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'pkb-tutorial-styles';
+        style.textContent = `
+/* ── Overlay ───────────────────────────────────────────────────── */
+#pkb-tutorial-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 9980;
+    backdrop-filter: blur(2px);
+    animation: pkbFadeIn 0.2s ease;
+}
+#pkb-tutorial-overlay.active { display: block; }
+
+/* ── Box ───────────────────────────────────────────────────────── */
+#pkb-tutorial-box {
+    display: none;
+    position: fixed;
+    z-index: 9990;
+    width: 340px;
+    background: #0d1117;
+    border: 1px solid rgba(0,210,255,0.3);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,210,255,0.08);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow: visible;
+    animation: pkbSlideIn 0.22s ease;
+}
+#pkb-tutorial-box.active { display: block; }
+
+/* ── Header ────────────────────────────────────────────────────── */
+.pkb-tut-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 16px 0;
+}
+.pkb-tut-step-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    color: #00d9ff; background: rgba(0,217,255,0.1);
+    padding: 2px 7px; border-radius: 20px; white-space: nowrap;
+    border: 1px solid rgba(0,217,255,0.25);
+}
+.pkb-tut-heading {
+    flex: 1; margin: 0;
+    font-size: 14px; font-weight: 700; color: #f0f6ff;
+    line-height: 1.3;
+}
+.pkb-tut-close {
+    background: none; border: none; color: #4b5563;
+    font-size: 20px; cursor: pointer; line-height: 1;
+    padding: 0 2px; flex-shrink: 0;
+    transition: color 0.15s;
+}
+.pkb-tut-close:hover { color: #e5e7eb; }
+
+/* ── Content ───────────────────────────────────────────────────── */
+.pkb-tut-content {
+    margin: 10px 16px 0;
+    font-size: 13px; line-height: 1.6; color: #9ca3af;
+}
+
+/* ── Footer ────────────────────────────────────────────────────── */
+.pkb-tut-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px 14px;
+}
+.pkb-tut-dots { display: flex; gap: 5px; align-items: center; }
+.pkb-tut-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #374151; cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+.pkb-tut-dot.active  { background: #00d9ff; transform: scale(1.3); }
+.pkb-tut-dot:hover:not(.active) { background: #6b7280; }
+
+.pkb-tut-actions { display: flex; gap: 8px; }
+.pkb-tut-btn {
+    background: #1f2937; border: 1px solid #374151;
+    color: #d1d5db; padding: 6px 14px; border-radius: 6px;
+    font-size: 12px; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.pkb-tut-btn:hover          { background: #374151; border-color: #4b5563; }
+.pkb-tut-btn.primary        { background: #00d9ff1a; border-color: rgba(0,217,255,0.45); color: #00d9ff; }
+.pkb-tut-btn.primary:hover  { background: #00d9ff30; }
+
+/* ── Arrow ─────────────────────────────────────────────────────── */
+.pkb-tut-arrow {
+    position: absolute; width: 0; height: 0; pointer-events: none;
+}
+.pkb-tut-arrow.arrow-top {
+    border-left: 8px solid transparent; border-right: 8px solid transparent;
+    border-bottom: 9px solid rgba(0,210,255,0.3);
+    top: -9px; transform: translateX(-50%);
+}
+.pkb-tut-arrow.arrow-top::after {
+    content: ''; position: absolute;
+    border-left: 7px solid transparent; border-right: 7px solid transparent;
+    border-bottom: 8px solid #0d1117;
+    top: 1px; left: -7px;
+}
+.pkb-tut-arrow.arrow-bottom {
+    border-left: 8px solid transparent; border-right: 8px solid transparent;
+    border-top: 9px solid rgba(0,210,255,0.3);
+    bottom: -9px; transform: translateX(-50%);
+}
+.pkb-tut-arrow.arrow-bottom::after {
+    content: ''; position: absolute;
+    border-left: 7px solid transparent; border-right: 7px solid transparent;
+    border-top: 8px solid #0d1117;
+    bottom: 1px; left: -7px;
+}
+.pkb-tut-arrow.arrow-left {
+    border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+    border-right: 9px solid rgba(0,210,255,0.3);
+    left: -9px; transform: translateY(-50%);
+}
+.pkb-tut-arrow.arrow-left::after {
+    content: ''; position: absolute;
+    border-top: 7px solid transparent; border-bottom: 7px solid transparent;
+    border-right: 8px solid #0d1117;
+    left: 1px; top: -7px;
+}
+.pkb-tut-arrow.arrow-right {
+    border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+    border-left: 9px solid rgba(0,210,255,0.3);
+    right: -9px; transform: translateY(-50%);
+}
+.pkb-tut-arrow.arrow-right::after {
+    content: ''; position: absolute;
+    border-top: 7px solid transparent; border-bottom: 7px solid transparent;
+    border-left: 8px solid #0d1117;
+    right: 1px; top: -7px;
+}
+
+/* ── Target highlight ──────────────────────────────────────────── */
+.pkb-tut-highlight {
+    position: relative; z-index: 9985;
+    box-shadow: 0 0 0 3px rgba(0,217,255,0.5), 0 0 20px rgba(0,217,255,0.15) !important;
+    border-radius: 6px;
+    animation: pkbPulse 2s infinite;
+}
+
+/* ── Animations ────────────────────────────────────────────────── */
+@keyframes pkbFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pkbSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pkbPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(0,217,255,0.5),  0 0 20px rgba(0,217,255,0.15) !important; }
+    50%       { box-shadow: 0 0 0 5px rgba(0,217,255,0.25), 0 0 30px rgba(0,217,255,0.25) !important; }
+}
+        `;
+        document.head.appendChild(style);
+        this._styleTag = style;
     }
 }
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────
+window.TutorialSystem = TutorialSystem;
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.tutorialSystem = new TutorialSystem();
+    window.tutorialSystem.init();
+
+    // Auto-start on first visit (skip if user has dismissed before)
+    const seen = localStorage.getItem('pkb-tutorial-seen');
+    if (!seen) {
+        setTimeout(() => {
+            window.tutorialSystem.startTutorial('main');
+            localStorage.setItem('pkb-tutorial-seen', '1');
+        }, 800); // brief delay so the board finishes rendering
+    }
+});

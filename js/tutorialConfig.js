@@ -1,211 +1,143 @@
 /**
- * Tutorial Configuration System
+ * TutorialConfig — pixelKanban
  *
- * This file defines the tutorial steps configuration and provides
- * an easy-to-use interface for setting up tutorials.
+ * Defines the step-by-step onboarding tutorial for the Kanban board.
+ *
+ * Each step supports:
+ *   elementId        — ID of the element to highlight (or null for centre modal)
+ *   selector         — CSS selector fallback when no ID is set
+ *   position         — 'top' | 'bottom' | 'left' | 'right' | 'center'
+ *   arrowPosition    — which side of the tooltip box the arrow appears on
+ *   arrowOffset      — 'start' | 'center' | 'end' (default 'center')
+ *   marginOverride   — extra px gap between tooltip and target
+ *   heading          — tooltip heading text
+ *   content          — tooltip body text
  */
-
-/*
-Config Seettings
-arrowPositionOverride
-Vertical Arrows (top/bottom): 'top-third', 'middle-third', 'bottom-third'
-Horizontal Arrows (left/right): 'left-third', 'center-third', 'right-third'
-Center Position: 'center' (default)
-*/
 
 class TutorialConfig {
     constructor() {
-        // Default tutorial configuration
         this.tutorials = {
-            'main': {
+            main: {
                 enabled: true,
                 steps: [
                     {
                         id: 'welcome',
-                        elementId: 'workspace-area',
+                        elementId: null,
                         position: 'center',
-                        arrowPosition: 'none', // No arrow for center position
-                        arrowPositionOverride: 'center', // Arrow position along the side (center, top-third, middle-third, bottom-third)
-                        marginOverride: '0',
-                        heading: 'Welcome to Pixel Audio!',
-                        content: 'This quick tutorial will guide you through the main features of the SFX Studio Pro.',
-                        showNext: true,
-                        showSkip: true
+                        arrowPosition: 'none',
+                        heading: 'Welcome to pixelKanban! 👋',
+                        content: 'This quick tour will show you how to manage tasks, collaborate with your team, and connect to GitHub. Use the arrow keys or buttons below to navigate.',
                     },
                     {
-                        id: 'layers',
-                        elementId: 'panel-layers',
-                        position: 'right',
-                        arrowPosition: 'left', // Arrow is on the left side of the tutorial panel, points left (away from tutorial panel)
-                        arrowPositionOverride: 'top-third', // Arrow positioned in the top third of the right side
-                        marginOverride: '60px', // Additional margin for better spacing
-                        heading: 'Layers Panel',
-                        content: 'Here you can add, remove, and manage different sound layers. Each layer can have its own unique sound settings.',
-                        showNext: true,
-                        showSkip: true
-                    },
-                    {
-                        id: 'presets',
-                        elementId: 'panel-presets',
-                        position: 'right',
-                        arrowPosition: 'left', // Arrow is on the left side of the tutorial panel, points left (away from tutorial panel)
-                        arrowPositionOverride: 'middle-third',
-                        marginOverride: '60px', // Additional margin for better spacing
-                        heading: 'Presets',
-                        content: 'Quickly load pre-configured sound presets for common game effects like jumps, explosions, and UI sounds.',
-                        showNext: true,
-                        showSkip: true
-                    },
-                    {
-                        id: 'synthesizer',
-                        elementId: 'fixed-tools-panel',
-                        position: 'right',
-                        arrowPosition: 'left', // Arrow is on the left side of the tutorial panel, points left (away from tutorial panel)
-                        marginOverride: '35px', // Slightly less margin for this panel
-                        heading: 'Synthesizer Controls',
-                        content: 'Adjust waveform, envelope, frequency, and other parameters to create your perfect sound.',
-                        showNext: true,
-                        showSkip: true
-                    },
-                    {
-                        id: 'timeline',
-                        elementId: 'timeline-controls',
-                        position: 'center',
-                        arrowPosition: 'none', 
-                        marginOverride: '0px', // More margin for timeline positioning
-                        heading: 'Timeline',
-                        content: 'Control playback and visualize your sound layers over time. Use the transport controls to play, stop, and adjust timing.',
-                        showNext: true,
-                        showSkip: true
-                    },
-                    {
-                        id: 'export',
-                        elementId: 'exportMixBtn',
+                        id: 'board',
+                        selector: '.kanban-board',
                         position: 'bottom',
-                        arrowPosition: 'top', // Arrow is on the top side of the tutorial panel, points up (towards target panel)
-                        arrowPositionOverride: 'right-third', // Arrow position along the side (center, top-third, middle-third, bottom-third)
-marginOverride: '25px', // Margin for export button positioning
-                        heading: 'Export Your Sounds',
-                        content: 'When you\'re happy with your creation, use the Export Mix button to save your sound as a WAV file.',
-                        showNext: true,
-                        showSkip: true
-                    }
-                ]
-            }
+                        arrowPosition: 'top',
+                        arrowOffset: 'center',
+                        marginOverride: 12,
+                        heading: 'Your Kanban Board',
+                        content: 'Tasks flow left-to-right through four columns: Backlog → To Do → In Progress → Done. Drag and drop any card to move it between stages.',
+                    },
+                    {
+                        id: 'add-task',
+                        selector: '.add-task-btn',
+                        position: 'bottom',
+                        arrowPosition: 'top',
+                        arrowOffset: 'start',
+                        marginOverride: 10,
+                        heading: 'Adding a Task',
+                        content: 'Click "+ Add a card" under any column to create a new task. You can set a title, description, priority, due date, labels, and attach files or links.',
+                    },
+                    {
+                        id: 'github',
+                        elementId: 'github-btn',
+                        position: 'bottom',
+                        arrowPosition: 'top',
+                        arrowOffset: 'end',
+                        marginOverride: 12,
+                        heading: 'GitHub Integration',
+                        content: 'Connect your GitHub account to sync tasks with Issues, load milestones, and push board changes directly to a repository.',
+                    },
+                    {
+                        id: 'add-user',
+                        elementId: 'add-user-btn',
+                        position: 'bottom',
+                        arrowPosition: 'top',
+                        arrowOffset: 'end',
+                        marginOverride: 12,
+                        heading: 'Team Members',
+                        content: 'Add your teammates here. Once added, you can assign tasks to specific people and filter the board by assignee.',
+                    },
+                    {
+                        id: 'settings',
+                        elementId: 'settings-btn',
+                        position: 'bottom',
+                        arrowPosition: 'top',
+                        arrowOffset: 'end',
+                        marginOverride: 12,
+                        heading: 'Board Settings',
+                        content: 'Customise column names, choose emoji or Font Awesome icons, manage labels, configure auto-save, and import or export your board data.',
+                    },
+                    {
+                        id: 'done',
+                        elementId: null,
+                        position: 'center',
+                        arrowPosition: 'none',
+                        heading: "You're all set! 🎉",
+                        content: "That's everything you need to get started. You can restart this tour at any time from the Settings panel. Happy organising!",
+                    },
+                ],
+            },
         };
 
-        // Current tutorial state
+        // ── Runtime state ──────────────────────────────────────────────────
         this.currentTutorial = 'main';
-        this.currentStep = 0;
-        this.isActive = false;
+        this.currentStep     = 0;
+        this.isActive        = false;
     }
 
-    /**
-     * Add a new tutorial
-     * @param {string} tutorialId - Unique identifier for the tutorial
-     * @param {Object} config - Tutorial configuration
-     */
-    addTutorial(tutorialId, config) {
-        this.tutorials[tutorialId] = config;
+    // ── Tutorial management ────────────────────────────────────────────────
+
+    addTutorial(id, config) { this.tutorials[id] = config; }
+
+    getTutorial(id) { return this.tutorials[id] || null; }
+
+    startTutorial(id) {
+        if (!this.tutorials[id]) return;
+        this.currentTutorial = id;
+        this.currentStep     = 0;
+        this.isActive        = true;
     }
 
-    /**
-     * Get tutorial by ID
-     * @param {string} tutorialId - Tutorial identifier
-     * @returns {Object|null} Tutorial configuration or null if not found
-     */
-    getTutorial(tutorialId) {
-        return this.tutorials[tutorialId] || null;
-    }
+    stopTutorial()      { this.isActive = false; }
+    isTutorialActive()  { return this.isActive; }
 
-    /**
-     * Get current step in current tutorial
-     * @returns {Object|null} Current step or null if no active tutorial
-     */
+    // ── Step navigation ────────────────────────────────────────────────────
+
     getCurrentStep() {
-        const tutorial = this.getTutorial(this.currentTutorial);
-        if (!tutorial || !tutorial.steps || this.currentStep >= tutorial.steps.length) {
-            return null;
-        }
-        return tutorial.steps[this.currentStep];
+        const t = this.getTutorial(this.currentTutorial);
+        if (!t || this.currentStep >= t.steps.length) return null;
+        return t.steps[this.currentStep];
     }
 
-    /**
-     * Move to next step
-     * @returns {Object|null} Next step or null if tutorial is complete
-     */
     nextStep() {
-        const tutorial = this.getTutorial(this.currentTutorial);
-        if (!tutorial || !tutorial.steps) return null;
-
+        const t = this.getTutorial(this.currentTutorial);
+        if (!t) return null;
         this.currentStep++;
-        if (this.currentStep >= tutorial.steps.length) {
-            // Tutorial complete
-            return null;
-        }
+        if (this.currentStep >= t.steps.length) return null;
         return this.getCurrentStep();
     }
 
-    /**
-     * Move to previous step
-     * @returns {Object|null} Previous step or null if at beginning
-     */
     prevStep() {
         if (this.currentStep <= 0) return null;
         this.currentStep--;
         return this.getCurrentStep();
     }
 
-    /**
-     * Reset tutorial to first step
-     */
-    resetTutorial() {
-        this.currentStep = 0;
-    }
+    resetTutorial() { this.currentStep = 0; }
 
-    /**
-     * Start a specific tutorial
-     * @param {string} tutorialId - Tutorial to start
-     */
-    startTutorial(tutorialId) {
-        if (this.tutorials[tutorialId]) {
-            this.currentTutorial = tutorialId;
-            this.currentStep = 0;
-            this.isActive = true;
-        }
-    }
-
-    /**
-     * Stop current tutorial
-     */
-    stopTutorial() {
-        this.isActive = false;
-    }
-
-    /**
-     * Check if tutorial is active
-     * @returns {boolean} True if tutorial is active
-     */
-    isTutorialActive() {
-        return this.isActive;
-    }
-
-    /**
-     * Get position class for tutorial step
-     * @param {string} position - Position value from step config
-     * @returns {string} CSS class for positioning
-     */
-    getPositionClass(position) {
-        switch(position) {
-            case 'top': return 'tutorial-top';
-            case 'bottom': return 'tutorial-bottom';
-            case 'left': return 'tutorial-left';
-            case 'right': return 'tutorial-right';
-            case 'center': return 'tutorial-center';
-            default: return 'tutorial-right';
-        }
+    get totalSteps() {
+        const t = this.getTutorial(this.currentTutorial);
+        return t ? t.steps.length : 0;
     }
 }
-
-// Export for use in other modules
-const tutorialConfig = new TutorialConfig();

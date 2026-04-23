@@ -13,6 +13,7 @@ class SettingsManager {
         this.dateFormat = 'uk'; // Default to UK format (DD/MM/YYYY)
         this.autoSaveEnabled = true; // Enable auto-save by default
         this.autoSaveInterval = null;
+        this.iconStyle = localStorage.getItem('kanban-icon-style') || 'emoji'; // 'emoji' or 'fontawesome'
         this.init();
     }
 
@@ -27,6 +28,7 @@ class SettingsManager {
 
     setupInitialState() {
         this.loadPanelConfig();
+        this.loadIconStyle();
         this.setupEventListeners();
         this.setupLabelEventListeners();
         // Update auto-save button state to match current setting
@@ -34,6 +36,61 @@ class SettingsManager {
         // Start auto-save if enabled
         if (this.autoSaveEnabled) {
             this.startAutoSave();
+        }
+    }
+
+    // Load saved icon style
+    loadIconStyle() {
+        const saved = localStorage.getItem('kanban-icon-style');
+        if (saved) {
+            this.iconStyle = saved;
+        }
+        // Update the select element
+        const selectEl = document.getElementById('icon-style-select');
+        if (selectEl) {
+            selectEl.value = this.iconStyle;
+        }
+    }
+
+    // Update icons in settings modal based on current style
+    updateSettingIcons() {
+        if (!window.kanbanBoard || !window.kanbanBoard.getIcon) return;
+
+        const iconMap = {
+            'settings-icon': 'cog',
+            'save-board-btn': 'save',
+            'auto-save-btn': 'save',
+            'export-json-btn': 'export',
+            'import-json-btn': 'import',
+            'add-label-btn': 'plus',
+            'reset-labels-btn': 'undo',
+            'label-save-btn': 'check',
+            'label-cancel-btn': 'close',
+            'settings-modal-close': 'close',
+            'settings-cancel-btn': 'close',
+            'create-board-btn': 'plus',
+            'save-panels-config': 'check',
+            'save-appearance-btn': 'check',
+            'github-import-users-btn': 'user'
+        };
+
+        for (const [btnId, iconType] of Object.entries(iconMap)) {
+            const btn = document.getElementById(btnId);
+            if (!btn) continue;
+
+            const iconHtml = window.kanbanBoard.getIcon(iconType);
+
+            // Remove existing icon
+            const firstChild = btn.firstChild;
+            if (firstChild) {
+                const isElement = firstChild.nodeType === 1; // Node.ELEMENT_NODE = 1
+                const isShortText = firstChild.nodeType === 3 && firstChild.textContent.trim().length <= 2; // Node.TEXT_NODE = 3
+                if (isElement || isShortText) {
+                    btn.removeChild(firstChild);
+                }
+            }
+
+            btn.insertAdjacentHTML('afterbegin', iconHtml + ' ');
         }
     }
 

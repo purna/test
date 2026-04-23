@@ -10,7 +10,7 @@ window.firebaseAuth = null;
 window.firebaseDb = null;
 
 // Check if Firebase is configured (config.js must be loaded first)
-if (typeof appFirebaseConfig !== 'undefined' && appFirebaseConfig.apiKey) {
+if (typeof appFirebaseConfig !== 'undefined' && appFirebaseConfig.apiKey && !appFirebaseConfig.apiKey.startsWith('YOUR_')) {
     try {
         window.firebaseApp = firebase.initializeApp(appFirebaseConfig);
         window.firebaseAuth = firebase.auth();
