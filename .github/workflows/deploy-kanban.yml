@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -47,6 +47,11 @@ jobs:
           sed -i "s/defaultOwner: '.*'/defaultOwner: '$OWNER'/" _kanban_src/js/config.js
           sed -i "s/defaultRepo: '.*'/defaultRepo: '$REPO'/" _kanban_src/js/config.js
 
+      - name: Move kanban files to temp location
+        run: |
+          mv _kanban_src /tmp/kanban_src
+          touch /tmp/kanban_src/.nojekyll
+
       - name: Switch to deploy branch
         run: |
           TB="${{ inputs.branch }}"
@@ -58,11 +63,9 @@ jobs:
           git rm -rf . 2>/dev/null || true
           git clean -fdx
 
-      - name: Copy kanban files
+      - name: Copy kanban files into branch
         run: |
-          cp -r _kanban_src/. .
-          rm -rf _kanban_src
-          touch .nojekyll
+          cp -r /tmp/kanban_src/. .
 
       - name: Commit and push
         env:
